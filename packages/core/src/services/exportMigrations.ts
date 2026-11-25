@@ -55,6 +55,28 @@ export function migrateExportV1ToV2(payload: Row): Row {
   return { ...payload, data };
 }
 
+/**
+ * v2 -> v3, the same rules as the SQLite migration:
+ * - workouts: `kind` "routine", `name` = `dayNameSnapshot` (no planSnapshot, nothing deleted);
+ * - workout exercises: `origin` "planned" (no plannedExerciseId);
+ * - sets: `source` "planned";
+ * - settings: `restNotifications` "unasked".
+ * Rows that are malformed are passed through untouched so validation reports them.
+ */
+export function migrateExportV2ToV3(payload: Row): Row {
+  let data = isRow(payload.data) ? payload.data : {};
+  data = mapRows(data, 'workouts', (row) => {
+    const { dayNameSnapshot, ...rest } = row;
+    return { kind: 'routine', name: dayNameSnapshot, ...rest };
+  });
+  data = mapRows(data, 'workoutExercises', (row) => ({ origin: 'planned', ...row }));
+  data = mapRows(data, 'workoutSets', (row) => ({ source: 'planned', ...row }));
+  if (isRow(data.settings)) {
+    data = { ...data, settings: { restNotifications: 'unasked', ...data.settings } };
+  }
+  return { ...payload, data };
+}
+
 /** A step upgrading a payload from version N to N + 1. Receives and returns the whole envelope. */
 export type ExportMigrationStep = (payload: Record<string, unknown>) => Record<string, unknown>;
 
@@ -65,6 +87,7 @@ export type ExportMigrationStep = (payload: Record<string, unknown>) => Record<s
  */
 export const EXPORT_MIGRATIONS: Record<number, ExportMigrationStep> = {
   1: migrateExportV1ToV2,
+  2: migrateExportV2ToV3,
 };
 
 /**

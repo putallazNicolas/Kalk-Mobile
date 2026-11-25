@@ -7,6 +7,8 @@ import {
   EXERCISE_NAME_MAX_LENGTH,
   MUSCLE_GROUPS,
   NAME_MAX_LENGTH,
+  REST_NOTIFICATION_STATES,
+  WORKOUT_NAME_MAX_LENGTH,
   ValidationError,
   type Equipment,
   type Exercise,
@@ -15,13 +17,17 @@ import {
   type MuscleGroup,
   type NewExerciseInput,
   type NewPlannedExerciseInput,
+  type NewWorkoutExerciseInput,
   type Patch,
   type PlannedExercise,
   type PlannedExercisePatch,
   type Settings,
+  type Workout,
   type WorkoutExercise,
+  type WorkoutItemOrigin,
+  type WorkoutSet,
 } from '../contracts';
-import { normalizeText } from '../utils';
+import { newId, normalizeText } from '../utils';
 
 import { assertRestSeconds, defaultPlan, normalizePlan } from '../plan';
 
@@ -40,6 +46,11 @@ export function assertName(name: unknown, label = 'name', max?: number): string 
 /** Routine and day names: trimmed, 1..NAME_MAX_LENGTH. */
 export function assertRoutineName(name: unknown, label = 'name'): string {
   return assertName(name, label, NAME_MAX_LENGTH);
+}
+
+/** Workout names: trimmed, 1..WORKOUT_NAME_MAX_LENGTH. */
+export function assertWorkoutName(name: unknown): string {
+  return assertName(name, 'name', WORKOUT_NAME_MAX_LENGTH);
 }
 
 const COPY_SUFFIX = ' (copia)';
@@ -136,6 +147,10 @@ export function clonePlannedExercise(p: PlannedExercise): PlannedExercise {
   return { ...p, plannedSets: p.plannedSets.map((s) => ({ ...s })) };
 }
 
+export function cloneWorkout(w: Workout): Workout {
+  return w.planSnapshot ? { ...w, planSnapshot: w.planSnapshot.map((i) => ({ ...i })) } : { ...w };
+}
+
 export function cloneWorkoutExercise(w: WorkoutExercise): WorkoutExercise {
   return { ...w, plannedSetReps: [...w.plannedSetReps] };
 }
@@ -183,7 +198,59 @@ export function assertSetRepsList(value: unknown): string[] {
   return value as string[];
 }
 
+/** Validates one exercise of a new workout (or one added later). */
+export function assertWorkoutExerciseInput(e: NewWorkoutExerciseInput): void {
+  assertNonNegativeInt(e.plannedSets, 'plannedSets');
+  assertSetRepsList(e.plannedSetReps);
+  if (e.restSeconds !== undefined) assertNonNegativeInt(e.restSeconds, 'restSeconds');
+  for (const s of e.sets) {
+    if (s.weightKg !== undefined) assertNonNegativeNumber(s.weightKg, 'weightKg');
+    if (s.reps !== undefined) assertNonNegativeInt(s.reps, 'reps');
+  }
+}
+
+/** A workout exercise and its sets built from an input (sets always start pending, "planned"). */
+export function buildWorkoutExercise(
+  workoutId: ID,
+  order: number,
+  input: NewWorkoutExerciseInput,
+  origin: WorkoutItemOrigin,
+): { exercise: WorkoutExercise; sets: WorkoutSet[] } {
+  const exercise: WorkoutExercise = compact({
+    id: newId(),
+    workoutId,
+    exerciseId: input.exerciseId,
+    order,
+    origin,
+    plannedExerciseId: input.plannedExerciseId,
+    plannedSets: input.plannedSets,
+    plannedReps: input.plannedReps,
+    plannedSetReps: [...input.plannedSetReps],
+    restSeconds: input.restSeconds,
+    notes: input.notes,
+    skipped: false,
+  });
+  const sets = input.sets.map((s, setIndex) =>
+    compact<WorkoutSet>({
+      id: newId(),
+      workoutExerciseId: exercise.id,
+      setIndex,
+      source: 'planned',
+      weightKg: s.weightKg,
+      reps: s.reps,
+      completed: false,
+    }),
+  );
+  return { exercise, sets };
+}
+
 export function assertSettingsPatch(patch: Partial<Settings>): void {
+  if (
+    patch.restNotifications !== undefined &&
+    !REST_NOTIFICATION_STATES.includes(patch.restNotifications)
+  ) {
+    throw new ValidationError(`invalid restNotifications: ${String(patch.restNotifications)}`);
+  }
   if (patch.unit !== undefined && patch.unit !== 'kg' && patch.unit !== 'lb') {
     throw new ValidationError(`invalid unit: ${String(patch.unit)}`);
   }

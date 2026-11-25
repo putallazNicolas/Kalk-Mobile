@@ -3,9 +3,11 @@ import {
   NotFoundError,
   type ExerciseHistoryEntry,
   type ID,
+  ValidationError,
   type Workout,
   type WorkoutDetail,
   type WorkoutExercise,
+  type WorkoutExerciseDetail,
   type WorkoutRepo,
   type WorkoutSet,
 } from '../contracts';
@@ -14,7 +16,11 @@ import {
   assertNonNegativeInt,
   assertNonNegativeNumber,
   assertPositiveInt,
-  assertSetRepsList,
+  assertSameIds,
+  assertWorkoutExerciseInput,
+  assertWorkoutName,
+  buildWorkoutExercise,
+  cloneWorkout,
   cloneWorkoutExercise,
   compact,
 } from '../rules';
@@ -22,11 +28,13 @@ import { newId } from '../utils';
 import type { MemoryContext } from './state';
 
 export function createWorkoutRepo({ state, now }: MemoryContext): WorkoutRepo {
+  /** Live (not soft-deleted) workouts only: a tombstone is invisible to everything but restore. */
   const getWorkout = (id: ID): Workout => {
     const found = state.workouts.get(id);
-    if (!found) throw new NotFoundError('Workout', id);
+    if (!found || found.deletedAt !== undefined) throw new NotFoundError('Workout', id);
     return found;
   };
+  const live = (): Workout[] => [...state.workouts.values()].filter((w) => !w.deletedAt);
   const getWorkoutExercise = (id: ID): WorkoutExercise => {
     const found = state.workoutExercises.get(id);
     if (!found) throw new NotFoundError('WorkoutExercise', id);
@@ -48,13 +56,27 @@ export function createWorkoutRepo({ state, now }: MemoryContext): WorkoutRepo {
       .filter((s) => s.workoutExerciseId === workoutExerciseId)
       .sort((a, b) => a.setIndex - b.setIndex);
 
-  const detail = (workout: Workout): WorkoutDetail => ({
-    ...workout,
-    exercises: exercisesOf(workout.id).map((e) => ({
-      ...cloneWorkoutExercise(e),
-      sets: setsOf(e.id).map((s) => ({ ...s })),
-    })),
+  const exerciseDetail = (e: WorkoutExercise): WorkoutExerciseDetail => ({
+    ...cloneWorkoutExercise(e),
+    sets: setsOf(e.id).map((s) => ({ ...s })),
   });
+
+  const detail = (workout: Workout): WorkoutDetail => ({
+    ...cloneWorkout(workout),
+    exercises: exercisesOf(workout.id).map(exerciseDetail),
+  });
+
+  const renumber = (workoutId: ID): void => {
+    exercisesOf(workoutId).forEach((e, i) => {
+      e.order = i;
+    });
+  };
+
+  const assertExercisesExist = (inputs: { exerciseId: ID }[]): void => {
+    for (const e of inputs) {
+      if (!state.exercises.has(e.exerciseId)) throw new NotFoundError('Exercise', e.exerciseId);
+    }
+  };
 
   /** Most recent first; ties resolved by creation order (later wins). */
   const byStartedDesc = (workouts: Workout[]): Workout[] =>
@@ -62,8 +84,7 @@ export function createWorkoutRepo({ state, now }: MemoryContext): WorkoutRepo {
       .reverse()
       .sort((a, b) => (a.startedAt < b.startedAt ? 1 : a.startedAt > b.startedAt ? -1 : 0));
 
-  const finished = (): Workout[] =>
-    byStartedDesc([...state.workouts.values()].filter((w) => w.finishedAt !== undefined));
+  const finished = (): Workout[] => byStartedDesc(live().filter((w) => w.finishedAt !== undefined));
 
   return {
     async create(input) {
@@ -73,66 +94,39 @@ export function createWorkoutRepo({ state, now }: MemoryContext): WorkoutRepo {
       if (input.dayId !== undefined && !state.routineDays.has(input.dayId)) {
         throw new NotFoundError('RoutineDay', input.dayId);
       }
-      for (const e of input.exercises) {
-        if (!state.exercises.has(e.exerciseId)) throw new NotFoundError('Exercise', e.exerciseId);
-        assertNonNegativeInt(e.plannedSets, 'plannedSets');
-        assertSetRepsList(e.plannedSetReps);
-        if (e.restSeconds !== undefined) assertNonNegativeInt(e.restSeconds, 'restSeconds');
-        for (const s of e.sets) {
-          if (s.weightKg !== undefined) assertNonNegativeNumber(s.weightKg, 'weightKg');
-          if (s.reps !== undefined) assertNonNegativeInt(s.reps, 'reps');
-        }
-      }
+      assertExercisesExist(input.exercises);
+      input.exercises.forEach(assertWorkoutExerciseInput);
 
       const workout: Workout = compact({
         id: newId(),
+        kind: input.kind,
         routineId: input.routineId,
         dayId: input.dayId,
-        dayNameSnapshot: input.dayNameSnapshot,
+        name: input.name,
         startedAt: input.startedAt ?? now(),
+        planSnapshot: input.planSnapshot?.map((i) => ({ ...i })),
         ownerId: LOCAL_USER_ID,
         createdBy: LOCAL_USER_ID,
       });
       state.workouts.set(workout.id, workout);
 
       input.exercises.forEach((e, order) => {
-        const we: WorkoutExercise = compact({
-          id: newId(),
-          workoutId: workout.id,
-          exerciseId: e.exerciseId,
-          order,
-          plannedSets: e.plannedSets,
-          plannedReps: e.plannedReps,
-          plannedSetReps: [...e.plannedSetReps],
-          restSeconds: e.restSeconds,
-          notes: e.notes,
-          skipped: false,
-        });
-        state.workoutExercises.set(we.id, we);
-        e.sets.forEach((s, setIndex) => {
-          const set: WorkoutSet = compact({
-            id: newId(),
-            workoutExerciseId: we.id,
-            setIndex,
-            weightKg: s.weightKg,
-            reps: s.reps,
-            completed: false,
-          });
-          state.workoutSets.set(set.id, set);
-        });
+        const built = buildWorkoutExercise(workout.id, order, e, e.origin ?? 'planned');
+        state.workoutExercises.set(built.exercise.id, built.exercise);
+        for (const set of built.sets) state.workoutSets.set(set.id, set);
       });
       return detail(workout);
     },
 
     async getById(id) {
       const found = state.workouts.get(id);
-      return found ? detail(found) : null;
+      return found && !found.deletedAt ? detail(found) : null;
     },
 
     async getInProgress() {
-      const open = byStartedDesc([...state.workouts.values()].filter((w) => !w.finishedAt));
+      const open = byStartedDesc(live().filter((w) => !w.finishedAt));
       const first = open[0];
-      return first ? { ...first } : null;
+      return first ? cloneWorkout(first) : null;
     },
 
     async listFinished(options) {
@@ -143,22 +137,29 @@ export function createWorkoutRepo({ state, now }: MemoryContext): WorkoutRepo {
       }
       const offset = options?.offset ?? 0;
       const end = options?.limit === undefined ? undefined : offset + options.limit;
-      return list.slice(offset, end).map((w) => ({ ...w }));
+      return list.slice(offset, end).map(cloneWorkout);
     },
 
     async getLastFinishedForRoutine(routineId) {
       const found = finished().find((w) => w.routineId === routineId);
-      return found ? { ...found } : null;
+      return found ? cloneWorkout(found) : null;
     },
 
     async update(id, patch) {
-      const next = applyPatch(getWorkout(id), patch);
+      const current = getWorkout(id);
+      const next = applyPatch(
+        current,
+        patch.name === undefined ? patch : { ...patch, name: assertWorkoutName(patch.name) },
+      );
       state.workouts.set(id, next);
-      return { ...next };
+      return cloneWorkout(next);
     },
 
-    async delete(id) {
-      getWorkout(id);
+    async discard(id) {
+      const workout = getWorkout(id);
+      if (workout.finishedAt !== undefined) {
+        throw new ValidationError('only a workout in progress can be discarded (use softDelete)');
+      }
       for (const we of exercisesOf(id)) {
         for (const s of setsOf(we.id)) state.workoutSets.delete(s.id);
         state.workoutExercises.delete(we.id);
@@ -166,10 +167,62 @@ export function createWorkoutRepo({ state, now }: MemoryContext): WorkoutRepo {
       state.workouts.delete(id);
     },
 
+    async softDelete(id) {
+      const workout = getWorkout(id);
+      if (workout.finishedAt === undefined) {
+        throw new ValidationError('a workout in progress cannot be deleted (use discard)');
+      }
+      workout.deletedAt = now();
+    },
+
+    async restore(id) {
+      const workout = state.workouts.get(id);
+      if (!workout) throw new NotFoundError('Workout', id);
+      delete workout.deletedAt;
+    },
+
     async updateWorkoutExercise(id, patch) {
       const we = getWorkoutExercise(id);
       if (patch.skipped !== undefined) we.skipped = patch.skipped;
       return cloneWorkoutExercise(we);
+    },
+
+    async addWorkoutExercises(workoutId, inputs, options) {
+      getWorkout(workoutId);
+      assertExercisesExist(inputs);
+      inputs.forEach(assertWorkoutExerciseInput);
+      const existing = exercisesOf(workoutId);
+      const at =
+        options?.afterOrder === undefined
+          ? existing.length
+          : Math.min(Math.max(options.afterOrder + 1, 0), existing.length);
+      for (const e of existing) if (e.order >= at) e.order += inputs.length;
+      const created = inputs.map((input, i) => {
+        const built = buildWorkoutExercise(workoutId, at + i, input, 'added');
+        state.workoutExercises.set(built.exercise.id, built.exercise);
+        for (const set of built.sets) state.workoutSets.set(set.id, set);
+        return built.exercise;
+      });
+      return created.map(exerciseDetail);
+    },
+
+    async removeWorkoutExercise(id) {
+      const we = getWorkoutExercise(id);
+      for (const s of setsOf(id)) state.workoutSets.delete(s.id);
+      state.workoutExercises.delete(id);
+      renumber(we.workoutId);
+    },
+
+    async reorderWorkoutExercises(workoutId, orderedIds) {
+      getWorkout(workoutId);
+      assertSameIds(
+        exercisesOf(workoutId).map((e) => e.id),
+        orderedIds,
+        'orderedIds',
+      );
+      orderedIds.forEach((id, order) => {
+        getWorkoutExercise(id).order = order;
+      });
     },
 
     async addSet(workoutExerciseId) {
@@ -180,6 +233,7 @@ export function createWorkoutRepo({ state, now }: MemoryContext): WorkoutRepo {
         id: newId(),
         workoutExerciseId,
         setIndex: existing.length,
+        source: 'added',
         weightKg: last?.weightKg,
         completed: false,
       });
@@ -212,7 +266,7 @@ export function createWorkoutRepo({ state, now }: MemoryContext): WorkoutRepo {
       const limit =
         options?.limit === undefined ? undefined : assertPositiveInt(options.limit, 'limit');
       const workouts = byStartedDesc(
-        [...state.workouts.values()].filter(
+        live().filter(
           (w) =>
             w.id !== options?.excludeWorkoutId &&
             (options?.includeInProgress || w.finishedAt !== undefined),
@@ -223,7 +277,7 @@ export function createWorkoutRepo({ state, now }: MemoryContext): WorkoutRepo {
         for (const we of exercisesOf(workout.id)) {
           if (we.exerciseId !== exerciseId) continue;
           entries.push({
-            workout: { ...workout },
+            workout: cloneWorkout(workout),
             workoutExercise: cloneWorkoutExercise(we),
             sets: setsOf(we.id).map((s) => ({ ...s })),
           });

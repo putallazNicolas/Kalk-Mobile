@@ -140,7 +140,8 @@ describe('sqlite integrity', () => {
     const a = await createSqliteRepositories(driver);
     const e = (await a.exercises.list({ search: 'sentadilla' }))[0]!;
     const w = await a.workouts.create({
-      dayNameSnapshot: 'D',
+      kind: 'routine',
+      name: 'D',
       exercises: [
         {
           exerciseId: e.id,
