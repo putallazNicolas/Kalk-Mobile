@@ -50,6 +50,8 @@ interface EditableTitleProps {
   emptyHelper?: string;
   /** Focus on mount with the text selected (a freshly created day). */
   autoFocus?: boolean;
+  /** Helper shown while not editing. Defaults to "Tocá el nombre para cambiarlo". */
+  idleHelper?: string;
 }
 
 /** Trim and collapse inner whitespace. */
@@ -69,6 +71,7 @@ export function EditableTitle({
   placeholder = 'Nombre',
   emptyHelper,
   autoFocus = false,
+  idleHelper = 'Tocá el nombre para cambiarlo',
 }: EditableTitleProps) {
   const reduced = useReducedMotion();
   const inputRef = useRef<TextInputInstance>(null);
@@ -151,7 +154,7 @@ export function EditableTitle({
   );
 
   const empty = focused && normalizeName(shown) === '';
-  let helper = 'Tocá el nombre para cambiarlo';
+  let helper = idleHelper;
   if (error && !focused) helper = error;
   else if (empty && emptyHelper) helper = emptyHelper;
   else if (focused) helper = 'Se guarda al tocar Listo o al salir del campo';

@@ -226,7 +226,7 @@ describe('Entrenando: discard', () => {
     expect(await screen.findByText('¿Descartar Piernas A?')).toBeTruthy();
     expect(
       screen.getByText(
-        'Se borran las 1 serie que cargaste hoy y no queda en el historial. La rutina no cambia.',
+        'Se borra la serie que cargaste hoy y no queda en el historial. La rutina no cambia.',
       ),
     ).toBeTruthy();
     expect(await fx.repos.workouts.getById(id)).not.toBeNull();
@@ -272,7 +272,8 @@ describe('Entrenando: discard', () => {
     const { id } = await openWorkout(false);
     router.push.mockClear();
     await openMenu();
-    await fireEvent.press(screen.getByLabelText('Agregar ejercicio'));
+    // The sheet's row (the end-of-list button has the same label and is rendered before it).
+    await fireEvent.press(screen.getAllByLabelText('Agregar ejercicio').at(-1)!);
     await settle();
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/elegir-ejercicio',

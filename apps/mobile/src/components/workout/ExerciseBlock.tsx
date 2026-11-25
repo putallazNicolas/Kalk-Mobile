@@ -18,6 +18,7 @@ import { formatClock, formatNumber, kgToUnit } from '../../lib/format';
 import { bestCompletedSet } from '../../lib/workoutStats';
 import { colors, hit, motion, radii, space, stroke } from '../../theme';
 import { Icon } from '../icons';
+import { InfoTag } from '../InfoTag';
 import { SetRow } from '../SetRow';
 import { Text } from '../Text';
 
@@ -32,6 +33,8 @@ export type ExerciseMode = 'expanded' | 'done' | 'next' | 'later' | 'skipped';
 interface ExerciseBlockProps {
   exercise: WorkoutExerciseDetail;
   name: string;
+  /** Added during a routine workout: shows the gray AGREGADO tag (design/S6 §2). */
+  added?: boolean;
   /** 0-based position and total, for "EJERCICIO i DE n". */
   position: number;
   count: number;
@@ -74,6 +77,7 @@ function previousText(
 export function ExerciseBlock({
   exercise,
   name,
+  added = false,
   position,
   count,
   mode,
@@ -162,9 +166,12 @@ export function ExerciseBlock({
             onPress={onToggleExpand}
             style={styles.cardTitle}
           >
-            <Text variant="label" color="accent">
-              Ejercicio {position + 1} de {count}
-            </Text>
+            <View style={styles.labelRow}>
+              <Text variant="label" color="accent">
+                Ejercicio {position + 1} de {count}
+              </Text>
+              {added ? <InfoTag label="Agregado" /> : null}
+            </View>
             <Text variant="displayM">{name}</Text>
           </Pressable>
           <View style={styles.pill}>
@@ -251,7 +258,10 @@ export function ExerciseBlock({
           style={styles.nextRow}
         >
           <View style={styles.flex}>
-            <Text variant="label">Siguiente</Text>
+            <View style={styles.labelRow}>
+              <Text variant="label">Siguiente</Text>
+              {added ? <InfoTag label="Agregado" /> : null}
+            </View>
             <Text variant="displayS" numberOfLines={1}>
               {name}
             </Text>
@@ -299,9 +309,12 @@ export function ExerciseBlock({
           onPress={onToggleExpand}
           style={styles.laterRow}
         >
-          <Text variant="displayS" color="textTertiary" numberOfLines={1} style={styles.flex}>
-            {name}
-          </Text>
+          <View style={[styles.flex, styles.labelRow]}>
+            <Text variant="displayS" color="textTertiary" numberOfLines={1} style={styles.shrink}>
+              {name}
+            </Text>
+            {added ? <InfoTag label="Agregado" /> : null}
+          </View>
           <Text variant="numMd" color="textTertiary">
             {planned}
           </Text>
@@ -328,6 +341,8 @@ export function ExerciseBlock({
 }
 
 const styles = StyleSheet.create({
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs + 2 },
+  shrink: { flexShrink: 1 },
   base: { overflow: 'hidden', borderWidth: stroke.hairline },
   cardOpen: {
     paddingTop: space.md + 2,

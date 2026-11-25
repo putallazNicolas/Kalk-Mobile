@@ -20,7 +20,9 @@ import {
 } from '../../components';
 // Not in the barrel: it pulls in gesture-handler, which the screens that do not swipe never load.
 import { SwipeToDelete, deleteAccessibility } from '../../components/SwipeToDelete';
+import { FreeWorkoutRow } from '../../components/home/FreeWorkoutRow';
 import { HomeEmpty } from '../../components/home/HomeEmpty';
+import { InfoTag } from '../../components/InfoTag';
 import {
   HoyHeader,
   type Headline,
@@ -102,9 +104,12 @@ function RecentRow({
           <Text variant="label">{weekday}</Text>
         </View>
         <View style={styles.recentText}>
-          <Text variant="bodyMSemi" numberOfLines={1}>
-            {item.workout.name}
-          </Text>
+          <View style={styles.recentName}>
+            <Text variant="bodyMSemi" numberOfLines={1} style={styles.recentNameText}>
+              {item.workout.name}
+            </Text>
+            {item.workout.kind === 'free' ? <InfoTag label="Libre" /> : null}
+          </View>
           <Text variant="caption">{formatDurationHuman(item.durationSeconds)}</Text>
         </View>
         <Text variant="numMd">
@@ -163,13 +168,22 @@ export default function HoyScreen() {
       router.push({ pathname: '/rutina/[routineId]', params: { routineId: routine.id } });
   }
 
+  /** "Entreno libre" (design/F1 2A/2B): an empty workout, exercises are added on the fly. */
+  async function startFree() {
+    const workout = await attempt(() => services.startFreeWorkout());
+    if (workout)
+      router.push({ pathname: '/entrenando/[workoutId]', params: { workoutId: workout.id } });
+  }
+
   async function start(dayId: string) {
     const workout = await attempt(() => services.startWorkoutFromDay(dayId));
     if (workout)
       router.push({ pathname: '/entrenando/[workoutId]', params: { workoutId: workout.id } });
   }
 
-  const isEmpty = data !== undefined && data.routineCount === 0 && !data.inProgress;
+  // First use: no routines and nothing trained. With free workouts in the history, Hoy shows them.
+  const isEmpty =
+    data !== undefined && data.routineCount === 0 && !data.inProgress && data.recent.length === 0;
 
   // The headline says what is due (design/L5, option 1; S5 box "22:30", point 4).
   let headline: Headline | undefined;
@@ -184,7 +198,7 @@ export default function HoyScreen() {
       title: data.inProgress.name,
       support: inProgressLine(done, total, new Date(data.inProgress.startedAt), now),
     };
-  } else if (data && isEmpty) {
+  } else if (data && (isEmpty || data.routineCount === 0)) {
     headline = {
       label: 'Primer paso',
       title: 'Armá tu rutina',
@@ -225,7 +239,11 @@ export default function HoyScreen() {
     body = <ErrorState message="No pudimos cargar tu día." onRetry={reload} />;
   else if (data && isEmpty)
     body = (
-      <HomeEmpty onCreateRoutine={createFirstRoutine} onImport={() => router.push('/perfil')} />
+      <HomeEmpty
+        onCreateRoutine={createFirstRoutine}
+        onFreeWorkout={startFree}
+        onImport={() => router.push('/perfil')}
+      />
     );
   else if (data) {
     const { inProgress, inProgressDetail, active, suggested, recent, lastSameDay } = data;
@@ -299,7 +317,20 @@ export default function HoyScreen() {
               }
             />
           </Card>
-        ) : null}
+        ) : (
+          // Only free workouts so far: the first routine is still one tap away.
+          <Card>
+            <Button
+              title="Armá tu primera rutina"
+              size="lg"
+              icon="add"
+              onPress={createFirstRoutine}
+            />
+          </Card>
+        )}
+
+        {/* Hidden while a workout is in progress: only one at a time (the banner continues it). */}
+        {inProgress ? null : <FreeWorkoutRow onPress={startFree} />}
 
         <View style={styles.section}>
           <Text variant="label" style={styles.sectionLabel}>
@@ -346,6 +377,8 @@ export default function HoyScreen() {
 }
 
 const styles = StyleSheet.create({
+  recentName: { flexDirection: 'row', alignItems: 'center', gap: space.xs + 2 },
+  recentNameText: { flexShrink: 1 },
   body: { flex: 1 },
   content: { gap: space.md, paddingBottom: space.xl },
   section: { marginTop: space.sm, gap: space.sm },

@@ -1,12 +1,13 @@
 import { StyleSheet, View } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
-
 import { colors, radii, space, stroke } from '../../theme';
 import { Button } from '../Button';
+import { EmptyBarbell } from '../EmptyBarbell';
 import { Text } from '../Text';
 
 interface HomeEmptyProps {
   onCreateRoutine: () => void;
+  /** "Entreno libre, sin rutina" (design/F1 2B): trains without having built anything. */
+  onFreeWorkout: () => void;
   onImport: () => void;
 }
 
@@ -16,52 +17,19 @@ const STEPS = [
   'Empezá y cargá cada serie con un toque',
 ];
 
-/** The empty barbell of design/P02: plates are dashed outlines, nothing loaded yet. */
-function EmptyBarbell() {
-  const dashed = {
-    fill: 'none',
-    stroke: colors.borderStrong,
-    strokeWidth: 1.5,
-    strokeDasharray: '4 4',
-  } as const;
-  return (
-    <Svg
-      width={320}
-      height={110}
-      viewBox="0 0 320 110"
-      accessibilityLabel="Barra olímpica sin discos"
-      accessibilityRole="image"
-    >
-      <Rect x={44} y={12} width={20} height={86} rx={4} {...dashed} />
-      <Rect x={68} y={22} width={14} height={66} rx={3} {...dashed} />
-      <Rect x={256} y={12} width={20} height={86} rx={4} {...dashed} />
-      <Rect x={238} y={22} width={14} height={66} rx={3} {...dashed} />
-      <Rect x={8} y={49} width={80} height={12} rx={3} fill={colors.border} />
-      <Rect x={232} y={49} width={80} height={12} rx={3} fill={colors.border} />
-      <Rect x={86} y={43} width={8} height={24} rx={2} fill={colors.borderStrong} />
-      <Rect x={226} y={43} width={8} height={24} rx={2} fill={colors.borderStrong} />
-      <Rect x={94} y={52} width={132} height={6} rx={3} fill={colors.textDisabled} />
-      <Path
-        d="M120 52v6M126 52v6M132 52v6M188 52v6M194 52v6M200 52v6"
-        stroke={colors.borderStrong}
-        strokeWidth={1}
-      />
-    </Svg>
-  );
-}
-
 /**
- * Hoy without routines (design/P02, L5 option 1): empty barbell, CTA, import and the 3-step list.
+ * Hoy without routines (design/P02, F1 2B, L5 option 1): empty barbell, CTA, free workout, import and the 3-step list.
  * The title and the line are in the Hoy headline ("PRIMER PASO · Armá tu rutina").
  */
-export function HomeEmpty({ onCreateRoutine, onImport }: HomeEmptyProps) {
+export function HomeEmpty({ onCreateRoutine, onFreeWorkout, onImport }: HomeEmptyProps) {
   return (
     <View style={styles.root}>
       <View style={styles.card}>
         <EmptyBarbell />
         <View style={styles.actions}>
           <Button title="Armá tu primera rutina" size="lg" icon="add" onPress={onCreateRoutine} />
-          <Button title="Importar datos" variant="secondary" onPress={onImport} />
+          <Button title="Entreno libre, sin rutina" variant="secondary" onPress={onFreeWorkout} />
+          <Button title="Importar datos" variant="ghost" size="sm" onPress={onImport} />
         </View>
       </View>
       <View>
