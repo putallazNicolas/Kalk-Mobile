@@ -38,6 +38,7 @@ import { ScreenHeader } from '../ScreenHeader';
 import { Text } from '../Text';
 import { ExerciseBlock, type ExerciseMode, type SetInput } from './ExerciseBlock';
 import { RestTimerBar } from './RestTimerBar';
+import { WorkoutMenu } from './WorkoutMenu';
 import { ProgressSegments, WorkoutStats } from './WorkoutProgress';
 
 interface ActiveWorkoutProps {
@@ -160,6 +161,33 @@ export function ActiveWorkout({
     },
     [],
   );
+
+  // Exercises added or reordered from another screen (picker, reorder sheet) arrive in `initial`
+  // when the screen reloads on focus. Merge only the structure: the local sets, inputs and the
+  // rest timer stay as they are.
+  const incomingStructure = initial.exercises.map((e) => `${e.id}:${e.order}`).join(',');
+  useEffect(() => {
+    const local = workoutRef.current;
+    if (local.exercises.map((e) => `${e.id}:${e.order}`).join(',') === incomingStructure) return;
+    const mine = new Map(local.exercises.map((e) => [e.id, e]));
+    const added = initial.exercises.filter((e) => !mine.has(e.id));
+    mutateWorkout((w) => ({
+      ...w,
+      exercises: initial.exercises.map((e) => {
+        const current = mine.get(e.id);
+        return current ? { ...current, order: e.order } : e;
+      }),
+    }));
+    if (added.length > 0) {
+      inputsRef.current = {
+        ...buildInputs({ ...initial, exercises: added }, unit),
+        ...inputsRef.current,
+      };
+      setInputsState(inputsRef.current);
+    }
+    // Only a different structure should merge; the other values are read at that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingStructure]);
 
   function registerRef(key: string, el: TextInputInstance | null) {
     if (!el) {
@@ -357,7 +385,75 @@ export function ActiveWorkout({
     }
   }
 
+  /** Deletes the workout in progress for real (it never reached the history) and goes to Hoy. */
+  async function discardNow() {
+    await queue.current;
+    const done = await attempt(async () => {
+      await repos.workouts.discard(workoutRef.current.id);
+      return true;
+    });
+    if (done) router.dismissAll();
+  }
+
+  async function discard() {
+    const { doneSets } = workoutTotals(workoutRef.current);
+    // Nothing completed: nothing to lose, discard right away.
+    if (doneSets > 0) {
+      const ok = await confirm({
+        title: `¿Descartar ${workoutRef.current.name}?`,
+        message: `Se borran las ${doneSets} ${doneSets === 1 ? 'serie' : 'series'} que cargaste hoy y no queda en el historial.${workoutRef.current.kind === 'free' ? '' : ' La rutina no cambia.'}`,
+        confirmLabel: 'Descartar',
+        cancelLabel: 'Seguir',
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+    await discardNow();
+  }
+
+  /** The exercise in progress, or the next pending one: new exercises enter right after it. */
+  function currentExercise(): WorkoutExerciseDetail | undefined {
+    const list = workoutRef.current.exercises;
+    return (
+      list.find((e) => e.id === expandedRef.current && !e.skipped) ??
+      list.find((e) => !e.skipped && e.sets.some((s) => !s.completed)) ??
+      list[list.length - 1]
+    );
+  }
+
+  async function addExercise() {
+    await flushAll();
+    const current = currentExercise();
+    router.push({
+      pathname: '/elegir-ejercicio',
+      params: {
+        workoutId: workoutRef.current.id,
+        ...(current ? { afterOrder: String(current.order) } : {}),
+      },
+    });
+  }
+
+  async function reorderExercises() {
+    await flushAll();
+    router.push({
+      pathname: '/reordenar/[workoutId]',
+      params: { workoutId: workoutRef.current.id },
+    });
+  }
+
   async function finish() {
+    // Nothing to save: offer to discard instead of keeping an empty workout in the history.
+    if (workoutTotals(workoutRef.current).doneSets === 0) {
+      const ok = await confirm({
+        title: 'No hay nada para guardar',
+        message: 'Todavía no completaste ninguna serie. ¿Lo descartamos o seguís entrenando?',
+        confirmLabel: 'Descartar',
+        cancelLabel: 'Seguir',
+        destructive: true,
+      });
+      if (ok) await discardNow();
+      return;
+    }
     const pending = workoutRef.current.exercises
       .filter((e) => !e.skipped)
       .reduce((n, e) => n + e.sets.filter((s) => !s.completed).length, 0);
@@ -420,14 +516,24 @@ export function ActiveWorkout({
         label={routineName ? `Entrenando · ${routineName}` : 'Entrenando'}
         title={workout.name}
         right={
-          <Button
-            title="Finalizar"
-            variant="outline"
-            size="sm"
-            fullWidth={false}
-            loading={finishing}
-            onPress={finish}
-          />
+          <View style={styles.headerActions}>
+            <WorkoutMenu
+              workoutName={workout.name}
+              completedSets={totals.doneSets}
+              onAddExercise={addExercise}
+              onReorder={reorderExercises}
+              onDiscard={discard}
+            />
+            <Button
+              title="Finalizar"
+              // Grey while there is nothing to save (design/F1 1C); tapping it offers to discard.
+              variant={totals.doneSets === 0 ? 'secondary' : 'outline'}
+              size="sm"
+              fullWidth={false}
+              loading={finishing}
+              onPress={finish}
+            />
+          </View>
         }
       />
       <View style={styles.strip}>
@@ -524,6 +630,7 @@ export function ActiveWorkout({
 }
 
 const styles = StyleSheet.create({
+  headerActions: { flexDirection: 'row', gap: space.sm },
   strip: { gap: space.sm + 2, paddingBottom: space.md },
   content: { gap: space.sm, paddingBottom: REST_BAR_CLEARANCE },
   allDone: {

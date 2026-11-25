@@ -26,7 +26,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { BrandSplash, ConfirmHost, ErrorState } from '../components';
+import { BrandSplash, ConfirmHost, ErrorState, UndoToastHost } from '../components';
 
 import { DataProvider } from '../data/DataProvider';
 import { createRepositories } from '../data/createRepositories';
@@ -191,8 +191,13 @@ function App({ repositories }: { repositories: Repositories }) {
             }}
           />
           <Stack.Screen name="resumen/[workoutId]" options={{ title: 'Resumen' }} />
+          <Stack.Screen
+            name="reordenar/[workoutId]"
+            options={{ title: 'Reordenar ejercicios', ...sheetOptions }}
+          />
         </Stack>
         <ConfirmHost />
+        <UndoToastHost />
       </ThemeProvider>
     </DataProvider>
   );

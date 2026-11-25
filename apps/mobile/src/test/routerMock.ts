@@ -8,6 +8,7 @@ export const router = {
   back: jest.fn(),
   push: jest.fn(),
   replace: jest.fn(),
+  dismissAll: jest.fn(),
   canGoBack: jest.fn(() => true),
 };
 

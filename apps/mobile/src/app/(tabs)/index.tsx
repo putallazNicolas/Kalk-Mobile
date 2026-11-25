@@ -18,6 +18,8 @@ import {
   ScreenContainer,
   Text,
 } from '../../components';
+// Not in the barrel: it pulls in gesture-handler, which the screens that do not swipe never load.
+import { SwipeToDelete, deleteAccessibility } from '../../components/SwipeToDelete';
 import { HomeEmpty } from '../../components/home/HomeEmpty';
 import {
   HoyHeader,
@@ -39,6 +41,8 @@ import {
   formatWeekdayShort,
   kgToUnit,
 } from '../../lib/format';
+import { deleteFinishedWorkout } from '../../lib/deleteWorkout';
+import { useHistoryVersion } from '../../lib/historyVersion';
 import { RECENT_PR_DAYS, inProgressLine, lastWorkoutLine } from '../../lib/hoyHeadline';
 import { useNow } from '../../lib/useNow';
 import { colors, radii, space, stroke } from '../../theme';
@@ -75,35 +79,40 @@ function RecentRow({
   item,
   unit,
   onPress,
+  onDelete,
 }: {
   item: WorkoutListItem;
   unit: WeightUnit;
   onPress: () => void;
+  onDelete: () => void;
 }) {
   const started = new Date(item.workout.startedAt);
   const weekday = formatWeekdayShort(started);
   return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={`${item.workout.name}, ${formatDate(started)}, ${formatDurationHuman(item.durationSeconds)}`}
-      onPress={onPress}
-      style={styles.recent}
-    >
-      <View style={styles.dateBlock}>
-        <Text variant="numM">{started.getDate()}</Text>
-        <Text variant="label">{weekday}</Text>
-      </View>
-      <View style={styles.recentText}>
-        <Text variant="bodyMSemi" numberOfLines={1}>
-          {item.workout.name}
+    <SwipeToDelete onDelete={onDelete}>
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel={`${item.workout.name}, ${formatDate(started)}, ${formatDurationHuman(item.durationSeconds)}`}
+        {...deleteAccessibility('Eliminar', onDelete)}
+        onPress={onPress}
+        style={styles.recent}
+      >
+        <View style={styles.dateBlock}>
+          <Text variant="numM">{started.getDate()}</Text>
+          <Text variant="label">{weekday}</Text>
+        </View>
+        <View style={styles.recentText}>
+          <Text variant="bodyMSemi" numberOfLines={1}>
+            {item.workout.name}
+          </Text>
+          <Text variant="caption">{formatDurationHuman(item.durationSeconds)}</Text>
+        </View>
+        <Text variant="numMd">
+          {formatNumber(kgToUnit(item.volumeKg, unit), 0)}
+          <Text variant="caption"> {unit}</Text>
         </Text>
-        <Text variant="caption">{formatDurationHuman(item.durationSeconds)}</Text>
-      </View>
-      <Text variant="numMd">
-        {formatNumber(kgToUnit(item.volumeKg, unit), 0)}
-        <Text variant="caption"> {unit}</Text>
-      </Text>
-    </PressableScale>
+      </PressableScale>
+    </SwipeToDelete>
   );
 }
 
@@ -112,6 +121,8 @@ export default function HoyScreen() {
   const services = useServices();
   const router = useRouter();
   const settings = useSettings();
+  // A delete or an undo (also from the Resumen) changes the history under this screen.
+  const historyVersion = useHistoryVersion();
   const { data, loading, error, reload } = useFocusAsync(async () => {
     const [inProgress, routines, active, suggested, recent, finished, weekly, recentPr] =
       await Promise.all([
@@ -141,7 +152,7 @@ export default function HoyScreen() {
       workoutsThisWeek: weekly[0]?.workouts ?? 0,
       recentPr,
     };
-  });
+  }, [historyVersion]);
 
   const nowMs = useNow();
   const now = new Date(nowMs);
@@ -310,6 +321,12 @@ export default function HoyScreen() {
                       pathname: '/resumen/[workoutId]',
                       params: { workoutId: r.workout.id },
                     })
+                  }
+                  onDelete={() =>
+                    void deleteFinishedWorkout(
+                      { repos, services, unit: settings.unit },
+                      r.workout.id,
+                    )
                   }
                 />
               ))}

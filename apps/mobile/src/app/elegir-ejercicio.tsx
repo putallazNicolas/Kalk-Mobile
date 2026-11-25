@@ -29,7 +29,7 @@ import {
   type ActionMenuItem,
   type MenuRect,
 } from '../components';
-import { useRepositories } from '../data/DataProvider';
+import { useRepositories, useServices } from '../data/DataProvider';
 import { useAsync } from '../data/useAsync';
 import { attempt } from '../lib/errors';
 import { haptics } from '../lib/haptics';
@@ -49,13 +49,17 @@ interface ToastState {
 }
 
 export default function PickExerciseScreen() {
-  const { dayId, savedId, savedKind, savedAt } = useLocalSearchParams<{
+  const { dayId, workoutId, afterOrder, savedId, savedKind, savedAt } = useLocalSearchParams<{
     dayId?: string;
+    /** Add-to-workout mode: the workout in progress and the order of the exercise in progress. */
+    workoutId?: string;
+    afterOrder?: string;
     savedId?: string;
     savedKind?: string;
     savedAt?: string;
   }>();
   const repos = useRepositories();
+  const services = useServices();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -84,11 +88,15 @@ export default function PickExerciseScreen() {
       }),
     [group, customOnly, search],
   );
-  // Exercises already planned in the day get an "En el día" tag.
+  // Exercises already planned in the day (or already in the workout) get a tag.
   const { data: inDay } = useAsync(async () => {
+    if (workoutId) {
+      const workout = await repos.workouts.getById(workoutId);
+      return new Set(workout?.exercises.map((e) => e.exerciseId) ?? []);
+    }
     const day = dayId ? await repos.routines.getDay(dayId) : null;
     return new Set(day?.exercises.map((e) => e.exerciseId) ?? []);
-  }, [dayId]);
+  }, [dayId, workoutId]);
 
   // Coming back from the create/edit screen: pre-select, scroll to, highlight and announce it.
   useEffect(() => {
@@ -128,29 +136,43 @@ export default function PickExerciseScreen() {
   }
 
   async function add() {
-    if (!dayId || selected.length === 0) return;
+    if ((!dayId && !workoutId) || selected.length === 0) return;
     setAdding(true);
-    const ok = await attempt(() =>
-      repos.routines.addPlannedExercises(
-        dayId,
-        selected.map((exerciseId) => ({ exerciseId })),
-      ),
-    );
+    // In a workout in progress they enter right after the exercise being done.
+    const ok = await attempt(async () => {
+      if (workoutId)
+        await services.addExercisesToWorkout(workoutId, selected, {
+          afterOrder: afterOrder === undefined ? undefined : Number(afterOrder),
+        });
+      else
+        await repos.routines.addPlannedExercises(
+          dayId as string,
+          selected.map((exerciseId) => ({ exerciseId })),
+        );
+      return true;
+    });
     setAdding(false);
     if (ok) router.back();
   }
 
+  /** What the create/edit screens hand back so this one keeps its mode. */
+  const context = {
+    ...(dayId ? { dayId } : {}),
+    ...(workoutId ? { workoutId } : {}),
+    ...(afterOrder !== undefined ? { afterOrder } : {}),
+  };
+
   function openCreate() {
     router.push({
       pathname: '/ejercicio/nuevo',
-      params: { ...(dayId ? { dayId } : {}), ...(search.trim() ? { name: search.trim() } : {}) },
+      params: { ...context, ...(search.trim() ? { name: search.trim() } : {}) },
     });
   }
 
   function openEdit(exerciseId: string) {
     router.push({
       pathname: '/ejercicio/[exerciseId]/editar',
-      params: { exerciseId, ...(dayId ? { dayId } : {}) },
+      params: { exerciseId, ...context },
     });
   }
 
@@ -242,6 +264,7 @@ export default function PickExerciseScreen() {
             exercise={item}
             selected={selected.includes(item.id)}
             inDay={inDay?.has(item.id) ?? false}
+            inLabel={workoutId ? 'En el entreno' : undefined}
             highlighted={highlightId === item.id}
             menuOpen={menu?.exercise.id === item.id}
             onToggle={() => toggle(item.id)}
@@ -322,7 +345,7 @@ export default function PickExerciseScreen() {
         <Button
           title={`Agregar (${selected.length})`}
           size="lg"
-          disabled={selected.length === 0 || !dayId}
+          disabled={selected.length === 0 || (!dayId && !workoutId)}
           loading={adding}
           onPress={add}
         />

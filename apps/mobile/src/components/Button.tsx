@@ -6,7 +6,7 @@ import { Icon, type IconName } from './icons';
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger' | 'dangerGhost';
 type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
@@ -35,6 +35,8 @@ const FG: Record<Variant, ColorToken> = {
   ghost: 'textBody',
   outline: 'accent',
   danger: 'onAccent',
+  /** Destructive but quiet: no fill (e.g. "Eliminar entrenamiento" at the end of the Resumen). */
+  dangerGhost: 'danger',
 };
 
 function background(variant: Variant, pressed: boolean, inactive: boolean) {

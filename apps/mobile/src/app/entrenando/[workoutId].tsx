@@ -3,13 +3,13 @@ import { Redirect, useLocalSearchParams } from 'expo-router';
 import { EmptyState, ErrorState, LoadingState, ScreenContainer } from '../../components';
 import { ActiveWorkout } from '../../components/workout/ActiveWorkout';
 import { useRepositories, useServices } from '../../data/DataProvider';
-import { useAsync } from '../../data/useAsync';
+import { useFocusAsync } from '../../data/useFocusAsync';
 
 export default function WorkoutScreen() {
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>();
   const repos = useRepositories();
   const services = useServices();
-  const { data, loading, error, reload } = useAsync(async () => {
+  const { data, loading, error, reload } = useFocusAsync(async () => {
     const [workout, settings] = await Promise.all([
       repos.workouts.getById(workoutId),
       repos.settings.get(),

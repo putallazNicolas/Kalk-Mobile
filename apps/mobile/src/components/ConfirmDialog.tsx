@@ -13,9 +13,20 @@ import { Button } from './Button';
 import { Icon } from './icons';
 import { Text } from './Text';
 
+/** Optional box of the dialog: what happens to the records (design/S6 §2, F1 1E). */
+export interface ConfirmImpact {
+  /** Small uppercase line next to the PR badge ("Tenía 1 récord"). */
+  heading: string;
+  lead: string;
+  /** Highlighted figure inside the sentence ("135 × 5"). */
+  emphasis?: string;
+  tail?: string;
+}
+
 interface ConfirmOptions {
   title: string;
   message?: string;
+  impact?: ConfirmImpact;
   confirmLabel?: string;
   cancelLabel?: string;
   /** Renders the confirm action as destructive (danger button with icon). */
@@ -125,6 +136,29 @@ export function ConfirmHost() {
               {pending.message}
             </Text>
           ) : null}
+          {pending.impact ? (
+            <View style={styles.impact} accessibilityLabel="Récords que se ven afectados">
+              <View style={styles.impactHead}>
+                <View style={styles.prBadge}>
+                  <Text variant="badge" color="onAccent">
+                    PR
+                  </Text>
+                </View>
+                <Text variant="label" color="record">
+                  {pending.impact.heading}
+                </Text>
+              </View>
+              <Text variant="bodyS">
+                {pending.impact.lead}
+                {pending.impact.emphasis ? (
+                  <Text variant="segmentM" color="textPrimary">
+                    {` ${pending.impact.emphasis}`}
+                  </Text>
+                ) : null}
+                {pending.impact.tail ? ` ${pending.impact.tail}` : null}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.actions}>
             <View style={styles.action}>
               <Button
@@ -168,6 +202,21 @@ const styles = StyleSheet.create({
   },
   iconDanger: { backgroundColor: colors.dangerMuted },
   iconAccent: { backgroundColor: colors.accentMuted },
+  impact: {
+    gap: space.sm - 2,
+    paddingVertical: space.sm + 2,
+    paddingHorizontal: space.md,
+    borderRadius: radii.lg - 2,
+    backgroundColor: colors.recordMuted,
+    borderWidth: stroke.hairline,
+    borderColor: colors.recordBorder,
+  },
+  impactHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm - 2 },
+  prBadge: {
+    paddingHorizontal: space.xs + 2,
+    borderRadius: radii.badge,
+    backgroundColor: colors.record,
+  },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
   action: { flex: 1 },
 });

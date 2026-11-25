@@ -110,6 +110,12 @@ const ICONS = {
     </>
   ),
   pencil: <Path d="M4 20h4L19 9l-4-4L4 16z" />,
+  reorder: (
+    <>
+      <Path d="M8 6h12M8 12h12M8 18h12" />
+      <Path d="M3 9l1.5-3L6 9M3 15l1.5 3L6 15" />
+    </>
+  ),
   empty: (
     <>
       <Path d="M3 13l2.5-7.5h13L21 13" />

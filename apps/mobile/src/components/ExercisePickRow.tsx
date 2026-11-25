@@ -29,6 +29,8 @@ interface ExercisePickRowProps {
   exercise: Exercise;
   selected: boolean;
   inDay: boolean;
+  /** Text of the `inDay` tag. Default: "En el día". */
+  inLabel?: string;
   highlighted: boolean;
   onToggle: () => void;
   /** Custom exercises only: opens the ⋯ menu, anchored to this rect (window coordinates). */
@@ -41,6 +43,7 @@ export function ExercisePickRow({
   exercise,
   selected,
   inDay,
+  inLabel = 'En el día',
   highlighted,
   onToggle,
   onMenu,
@@ -104,7 +107,7 @@ export function ExercisePickRow({
         {inDay ? (
           <View style={styles.tag}>
             <Text variant="caption" color="textSecondary">
-              En el día
+              {inLabel}
             </Text>
           </View>
         ) : null}

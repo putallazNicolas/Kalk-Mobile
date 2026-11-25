@@ -18,6 +18,7 @@ import { RecordLights } from '../../components/summary/RecordLights';
 import { useRepositories, useServices } from '../../data/DataProvider';
 import { useAsync } from '../../data/useAsync';
 import { useSettings } from '../../data/useSettings';
+import { deleteFinishedWorkout } from '../../lib/deleteWorkout';
 import { attempt } from '../../lib/errors';
 import {
   formatDate,
@@ -224,6 +225,12 @@ export default function SummaryScreen() {
     if (ok) router.dismissAll();
   }
 
+  /** Confirms (with what happens to the records), deletes and goes back to Hoy, where the undo toast shows. */
+  async function removeWorkout() {
+    const deleted = await deleteFinishedWorkout({ repos, services, unit }, workoutId);
+    if (deleted) router.dismissAll();
+  }
+
   return (
     <ScreenContainer edges={['bottom', 'left', 'right']}>
       <ScrollView
@@ -355,6 +362,12 @@ export default function SummaryScreen() {
           />
         </View>
         <Button title="Guardar y volver" size="lg" loading={saving} onPress={saveAndExit} />
+        <Button
+          title="Eliminar entrenamiento"
+          variant="dangerGhost"
+          icon="trash"
+          onPress={removeWorkout}
+        />
       </ScrollView>
     </ScreenContainer>
   );
