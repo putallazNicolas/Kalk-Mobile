@@ -37,7 +37,7 @@ import { ScreenContainer } from '../ScreenContainer';
 import { ScreenHeader } from '../ScreenHeader';
 import { Text } from '../Text';
 import { UNDO_TOAST_MS } from '../Toast';
-import { showUndoToast } from '../UndoToast';
+import { hideUndoToast, showUndoToast } from '../UndoToast';
 import { AddExerciseButton, EmptyWorkout } from './EmptyWorkout';
 import { ExerciseBlock, type ExerciseMode, type SetInput } from './ExerciseBlock';
 import { ExerciseMenu } from './ExerciseMenu';
@@ -423,7 +423,10 @@ export function ActiveWorkout({
   /** Writes the waiting removal right now (nothing is left behind when the screen is done). */
   function flushRemoval(): Promise<void> {
     const p = pendingRemoval.current;
-    return p ? commitRemoval(p) : Promise.resolve();
+    if (!p) return Promise.resolve();
+    // Written before the toast expired: its "Deshacer" could no longer undo anything.
+    hideUndoToast();
+    return commitRemoval(p);
   }
 
   // Persist pending edits and removals when the app goes to the background, and the removal

@@ -207,8 +207,11 @@ describe('removing a set', () => {
       initial.exercises[1]!.sets.length,
     );
 
+    expect(screen.getByLabelText('Deshacer')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Finalizar'));
     await settle();
+    // Written early: the toast goes away instead of offering an undo that can't happen.
+    expect(screen.queryByLabelText('Deshacer')).toBeNull();
 
     const done = await workoutOf(f, initial.id);
     expect(done.finishedAt).toBeDefined();

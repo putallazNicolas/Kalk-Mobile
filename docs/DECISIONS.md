@@ -181,3 +181,4 @@ Formato: fecha — decisión — motivo.
 - 2026-11-25 — (Flexibilidad, editar) La serie agregada usa los kg que copia el núcleo y, como placeholder de reps, las de la serie anterior; muestra "AGREGADA" gris solo mientras está pendiente. — F1b.
 - 2026-11-25 — (Flexibilidad, editar) La card del Resumen con estado "decided" (el dueño ya contestó antes) muestra solo la línea de confirmación, sin botones; con "none" no hay card. — Es información útil al volver a abrir el Resumen y no ofrece nada que ya se decidió.
 - 2026-11-25 — (Flexibilidad, editar) El cambio de orden aparece en la card como "↕ Cambió el orden de los ejercicios". — F1b no dibuja ese caso.
+- 2026-11-25 — (Flexibilidad, editar) Si una baja diferida se escribe antes de que venza el toast (salir de la pantalla, finalizar, descartar, abrir el selector), el toast "Deshacer" se oculta (`hideUndoToast`): nunca queda en pantalla un "Deshacer" que ya no puede deshacer nada. — Revisión del orquestador.
