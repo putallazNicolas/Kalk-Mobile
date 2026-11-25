@@ -17,11 +17,18 @@ import { Text } from './Text';
 
 /** Auto-dismiss delay (design/S4: closes by itself after 3 s). */
 const TOAST_MS = 3000;
+/** The undo toast (design/S6 UndoToast) stays longer: 5 s. */
+export const UNDO_TOAST_MS = 5000;
+const UNDO_ICON = 18;
 const FROM_Y = -12;
 const BADGE = 24;
 
 interface ToastProps {
   message: string;
+  /** `undo`: neutral border and a trash icon instead of the green check (design/S6 UndoToast). */
+  tone?: 'success' | 'undo';
+  /** How long it stays before fading. */
+  durationMs?: number;
   actionLabel?: string;
   onAction?: () => void;
   onDismiss: () => void;
@@ -31,7 +38,14 @@ interface ToastProps {
  * Top toast (design/P08c): success border, check, message and an accent action. Mount it while
  * visible (give it a `key` per message); it slides in, waits 3 s and calls `onDismiss` after fading.
  */
-export function Toast({ message, actionLabel, onAction, onDismiss }: ToastProps) {
+export function Toast({
+  message,
+  tone = 'success',
+  durationMs = TOAST_MS,
+  actionLabel,
+  onAction,
+  onDismiss,
+}: ToastProps) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
   const progress = useSharedValue(0);
@@ -48,9 +62,9 @@ export function Toast({ message, actionLabel, onAction, onDismiss }: ToastProps)
       progress.value = withTiming(0, { duration: motion.fast }, (finished) => {
         if (finished) runOnJS(onDismiss)();
       });
-    }, TOAST_MS);
+    }, durationMs);
     return () => clearTimeout(timer);
-  }, [progress, reduced, onDismiss]);
+  }, [progress, reduced, onDismiss, durationMs]);
 
   const animated = useAnimatedStyle(() => ({
     opacity: progress.value,
@@ -59,10 +73,17 @@ export function Toast({ message, actionLabel, onAction, onDismiss }: ToastProps)
 
   return (
     <View style={[styles.layer, { top: insets.top + space.sm }]} pointerEvents="box-none">
-      <Animated.View style={[styles.toast, animated]} accessibilityLiveRegion="polite">
-        <View style={styles.badge}>
-          <Icon name="check" size={14} color="onAccent" strokeWidth={3.4} />
-        </View>
+      <Animated.View
+        style={[styles.toast, tone === 'undo' && styles.toastUndo, animated]}
+        accessibilityLiveRegion="polite"
+      >
+        {tone === 'undo' ? (
+          <Icon name="trash" size={UNDO_ICON} color="textSecondary" />
+        ) : (
+          <View style={styles.badge}>
+            <Icon name="check" size={14} color="onAccent" strokeWidth={3.4} />
+          </View>
+        )}
         <Text variant="bodyMSemi" style={styles.message} numberOfLines={2}>
           {message}
         </Text>
@@ -102,6 +123,7 @@ const styles = StyleSheet.create({
     borderColor: colors.successBorderStrong,
     ...elevation.floating,
   },
+  toastUndo: { borderColor: colors.borderRaised },
   badge: {
     width: BADGE,
     height: BADGE,

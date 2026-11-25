@@ -42,6 +42,9 @@ interface ExerciseFormProps {
   exerciseId?: string;
   /** The day Elegir ejercicio was opened for; handed back so the picker can restore itself. */
   dayId?: string;
+  /** Same for the add-to-workout mode: the workout in progress and where the exercises enter. */
+  workoutId?: string;
+  afterOrder?: string;
   /** Prefill for a new exercise (the search text that found nothing). */
   initialName?: string;
 }
@@ -51,7 +54,13 @@ interface ExerciseFormProps {
  * secondary groups, equipment and technique notes. Editing reuses it with the data loaded.
  * On save it goes back to Elegir ejercicio with the saved id, which the picker pre-selects.
  */
-export function ExerciseForm({ exerciseId, dayId, initialName }: ExerciseFormProps) {
+export function ExerciseForm({
+  exerciseId,
+  dayId,
+  workoutId,
+  afterOrder,
+  initialName,
+}: ExerciseFormProps) {
   const repos = useRepositories();
   const { data, loading, error, reload } = useAsync(
     () => (exerciseId ? repos.exercises.getById(exerciseId) : Promise.resolve(null)),
@@ -79,16 +88,28 @@ export function ExerciseForm({ exerciseId, dayId, initialName }: ExerciseFormPro
       </ScreenContainer>
     );
   }
-  return <FormBody exercise={data ?? undefined} dayId={dayId} initialName={initialName} />;
+  return (
+    <FormBody
+      exercise={data ?? undefined}
+      dayId={dayId}
+      workoutId={workoutId}
+      afterOrder={afterOrder}
+      initialName={initialName}
+    />
+  );
 }
 
 function FormBody({
   exercise,
   dayId,
+  workoutId,
+  afterOrder,
   initialName,
 }: {
   exercise?: Exercise;
   dayId?: string;
+  workoutId?: string;
+  afterOrder?: string;
   initialName?: string;
 }) {
   const repos = useRepositories();
@@ -161,6 +182,8 @@ function FormBody({
       pathname: '/elegir-ejercicio',
       params: {
         ...(dayId ? { dayId } : {}),
+        ...(workoutId ? { workoutId } : {}),
+        ...(afterOrder !== undefined ? { afterOrder } : {}),
         savedId: saved.id,
         savedKind: editing ? 'edited' : 'created',
         savedAt: String(Date.now()),

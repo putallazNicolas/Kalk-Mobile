@@ -3,9 +3,10 @@ import { StyleSheet, View } from 'react-native';
 
 import { restLabel } from '../lib/planFormat';
 import { DEFAULT_REST_SECONDS } from '../lib/rest';
-import { colors, hit, radii, space, stroke } from '../theme';
+import { colors, radii, space, stroke } from '../theme';
 
 import { Icon } from './icons';
+import { MoveArrows } from './MoveArrows';
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
 
@@ -83,34 +84,11 @@ export function PlannedExerciseRow({
           </View>
         </View>
       </PressableScale>
-      <View style={styles.arrows}>
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel={`Subir ${name}`}
-          accessibilityState={{ disabled: !canMoveUp }}
-          disabled={!canMoveUp}
-          onPress={() => onMove(-1)}
-          style={[styles.arrow, !canMoveUp && styles.arrowOff]}
-        >
-          <Icon name="up" size={20} color="textBody" strokeWidth={2.4} />
-        </PressableScale>
-        <View style={styles.arrowDivider} />
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel={`Bajar ${name}`}
-          accessibilityState={{ disabled: !canMoveDown }}
-          disabled={!canMoveDown}
-          onPress={() => onMove(1)}
-          style={[styles.arrow, !canMoveDown && styles.arrowOff]}
-        >
-          <Icon name="down" size={20} color="textBody" strokeWidth={2.4} />
-        </PressableScale>
-      </View>
+      <MoveArrows name={name} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onMove={onMove} />
     </View>
   );
 }
 
-const ARROWS_WIDTH = 48;
 const POSITION_WIDTH = 40;
 
 const styles = StyleSheet.create({
@@ -145,12 +123,4 @@ const styles = StyleSheet.create({
   restRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs + 2, minWidth: 0 },
   rest: { flexShrink: 0 },
   note: { flexShrink: 1, minWidth: 0 },
-  arrows: {
-    width: ARROWS_WIDTH,
-    borderLeftWidth: stroke.hairline,
-    borderLeftColor: colors.border,
-  },
-  arrow: { flex: 1, minHeight: hit.min, alignItems: 'center', justifyContent: 'center' },
-  arrowOff: { opacity: 0.3 },
-  arrowDivider: { height: stroke.hairline, backgroundColor: colors.border },
 });
