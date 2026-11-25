@@ -1,4 +1,11 @@
-import type { PersonalRecord, WeightUnit, WorkoutDetail, WorkoutSummary } from '@gym/core';
+import type {
+  PersonalRecord,
+  PlanChangeDecision,
+  PlanChanges,
+  WeightUnit,
+  WorkoutDetail,
+  WorkoutSummary,
+} from '@gym/core';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -15,6 +22,7 @@ import {
   Text,
   TextField,
 } from '../../components';
+import { PlanChangesCard } from '../../components/summary/PlanChangesCard';
 import { RecordLights } from '../../components/summary/RecordLights';
 import { useRepositories, useServices } from '../../data/DataProvider';
 import { useAsync } from '../../data/useAsync';
@@ -90,6 +98,8 @@ interface PrRow {
 type SummaryData = WorkoutSummary & {
   /** Heaviest completed set per exercise (ties: more reps), for weight records. */
   heaviest: Map<string, { weightKg: number; reps: number }>;
+  /** What the workout changed in its routine day (the "Actualizar <día>" card). */
+  plan: PlanChanges;
 };
 
 function heaviestSets(detail: WorkoutDetail | null): SummaryData['heaviest'] {
@@ -179,14 +189,17 @@ export default function SummaryScreen() {
   const router = useRouter();
   const settings = useSettings();
   const { data, loading, error, reload } = useAsync(async (): Promise<SummaryData> => {
-    const [summary, detail] = await Promise.all([
+    const [summary, detail, plan] = await Promise.all([
       services.getWorkoutSummary(workoutId),
       repos.workouts.getById(workoutId),
+      services.getPlanChanges(workoutId),
     ]);
-    return { ...summary, heaviest: heaviestSets(detail) };
+    return { ...summary, heaviest: heaviestSets(detail), plan };
   }, [workoutId]);
   const [notes, setNotes] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+  const [planDecision, setPlanDecision] = useState<PlanChangeDecision | undefined>(undefined);
+  const [deciding, setDeciding] = useState(false);
 
   if (loading && !data)
     return (
@@ -224,6 +237,18 @@ export default function SummaryScreen() {
     );
     setSaving(false);
     if (ok) router.dismissAll();
+  }
+
+  /** "Actualizar <día>" writes the changes into the routine; "Dejar la rutina como está" only remembers the answer. */
+  async function decidePlan(decision: PlanChangeDecision) {
+    setDeciding(true);
+    const done = await attempt(async () => {
+      if (decision === 'applied') await services.applyPlanChanges(workoutId);
+      else await services.keepPlan(workoutId);
+      return true;
+    });
+    setDeciding(false);
+    if (done) setPlanDecision(decision);
   }
 
   /** Saves the new name of a free workout; EditableTitle keeps it on screen until the reload lands. */
@@ -325,6 +350,14 @@ export default function SummaryScreen() {
             </View>
           </View>
         ) : null}
+
+        <PlanChangesCard
+          changes={data.plan}
+          decision={planDecision}
+          busy={deciding}
+          onApply={() => void decidePlan('applied')}
+          onKeep={() => void decidePlan('kept')}
+        />
 
         <View style={styles.best}>
           <Text variant="label" style={styles.sectionLabel}>
