@@ -30,7 +30,7 @@ import { haptics } from '../../lib/haptics';
 import { isFinishedExercise, moveId } from '../../lib/reorder';
 import { restSecondsFor } from '../../lib/rest';
 import { useNow } from '../../lib/useNow';
-import { firstPendingId, prSetIds, workoutTotals } from '../../lib/workoutStats';
+import { firstPendingId, prSetIds, sessionSummary, workoutTotals } from '../../lib/workoutStats';
 import { colors, radii, space, stroke } from '../../theme';
 import { Button } from '../Button';
 import { confirm } from '../ConfirmDialog';
@@ -832,9 +832,11 @@ export function ActiveWorkout({
         {allDone ? (
           <Animated.View entering={FadeInDown.duration(320)} style={styles.allDone}>
             <Text variant="label" color="success">
-              Todas las series completas
+              Sesión completa
             </Text>
-            <Text variant="displayM">Buen laburo</Text>
+            <Text variant="displayM" style={styles.allDoneTitle}>
+              {sessionSummary(workout, unit)}
+            </Text>
             <Button
               title="Finalizar y ver resumen"
               size="lg"
@@ -890,5 +892,6 @@ const styles = StyleSheet.create({
     borderWidth: stroke.hairline,
     borderColor: colors.successBorder,
   },
+  allDoneTitle: { textAlign: 'center' },
   allDoneButton: { marginTop: space.md },
 });

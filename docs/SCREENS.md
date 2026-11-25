@@ -60,11 +60,21 @@ Las hojas de edición no llevan este header.
 - ✓ con las reps vacías: si lo planificado para esa serie es un número, se carga ese número. Si es un rango
   ("8-10") o AMRAP, **no se completa**: el campo de reps tiembla (2 × 240 ms), recibe el foco y vibra con un
   aviso (`notificationAsync(Warning)`). _(Decisión del dueño al aprobar el diseño de Ajustes UX.)_
+- ✓ con los kg vacíos: en un ejercicio con carga (barra, mancuernas, máquina, polea, pesa rusa) **no se
+  completa**: el campo de kg tiembla, recibe el foco y vibra, igual que las reps. Peso corporal, banda,
+  "otro", cardio y los ejercicios sin equipo se completan sin kg. El "0" del campo es solo el placeholder.
 - Al tocar ✓: la fila queda verde, se guarda al instante, **se cierra el teclado** y el foco avanza
   automáticamente a la siguiente serie **de forma visual** (marco naranja, sin abrir el teclado; tocar el
   campo lo abre). _(Decisión del dueño, 2026-10-15.)_
 - Cuando se completan todas las series, el ejercicio colapsa a un título verde con ✓ y se expande el
   siguiente. Tocar un ejercicio colapsado lo vuelve a abrir para editarlo.
+- Con todo completo aparece la card **"SESIÓN COMPLETA"** (etiqueta verde) con un título de datos reales:
+  "3 ejercicios · 14 series · 4.720 kg" en la unidad del usuario, sin el volumen si es 0. Sin frases
+  motivacionales. Abajo, "Finalizar y ver resumen".
+- Quitar una serie deslizándola: el gesto arranca recién con 20 pt horizontales y se cancela si el dedo
+  se mueve 12 pt en vertical antes (scrollear nunca arrastra una fila). Se decide al soltar: más de media
+  pantalla la quita (con "Deshacer" 5 s); más de media acción deja "Quitar" a la vista; menos, vuelve. El
+  rojo solo se ve en la acción, mientras la fila está corrida; la fila completada tiene fondo opaco.
 - Menú por ejercicio: agregar serie, quitar serie y saltar ejercicio.
 - Después de **cada** ✓ aparece abajo la barra de descanso no bloqueante (como en `design/P03`): cuenta
   regresiva de `restSeconds` del ejercicio o **2:00 por defecto** si no tiene, "+15 s", descartable. Si el

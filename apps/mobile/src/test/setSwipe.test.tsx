@@ -147,6 +147,11 @@ describe('✓ never removes a set', () => {
     // The weight carries over to the next set, so all three have it.
     expect(sets.map((s) => s.weightKg)).toEqual([12, 12, 12]);
     expect(screen.queryByText('Serie quitada')).toBeNull();
+    // The card at the end (once the exercise folds) states facts: no "Buen laburo".
+    await wait(800);
+    expect(screen.getByText('Sesión completa')).toBeTruthy();
+    expect(screen.getByText('1 ejercicio · 3 series · 360 kg')).toBeTruthy();
+    expect(screen.queryByText('Buen laburo')).toBeNull();
   });
 
   it('the completed row has no visible red while it is not swiped', async () => {

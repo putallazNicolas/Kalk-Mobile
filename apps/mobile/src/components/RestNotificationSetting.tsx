@@ -20,6 +20,8 @@ import { Text } from './Text';
 interface RestNotificationSettingProps {
   value: RestNotificationState;
   onChange: (next: RestNotificationState) => void;
+  /** Without the rest timer there is no rest to announce: the caption says so. */
+  restTimerEnabled?: boolean;
 }
 
 /**
@@ -27,7 +29,11 @@ interface RestNotificationSettingProps {
  * is read every time Perfil gains focus; if it was denied, the switch becomes "Abrir Ajustes".
  * Hidden on the web preview, which has no local notifications.
  */
-export function RestNotificationSetting({ value, onChange }: RestNotificationSettingProps) {
+export function RestNotificationSetting({
+  value,
+  onChange,
+  restTimerEnabled = true,
+}: RestNotificationSettingProps) {
   const [permission, setPermission] = useState<NotificationPermission | null>(null);
 
   useFocusEffect(
@@ -64,7 +70,9 @@ export function RestNotificationSetting({ value, onChange }: RestNotificationSet
         <Text variant="caption" color="textSecondary">
           {denied
             ? 'Las notificaciones de Kalk están apagadas en Ajustes de iOS.'
-            : 'Una notificación cuando termina el descanso, si el teléfono está bloqueado o en otra app.'}
+            : !restTimerEnabled
+              ? 'Necesita el temporizador de descanso prendido: sin temporizador no hay descanso que avisar.'
+              : 'Una notificación cuando termina el descanso, si el teléfono está bloqueado o en otra app.'}
         </Text>
       </View>
       {denied ? (

@@ -1,5 +1,5 @@
 import type { NextUp } from './restNotificationText';
-import type { NotificationPermission } from './restNotifications';
+import type { NotificationDiagnostics, NotificationPermission } from './restNotifications';
 
 /**
  * Web preview stand-in for restNotifications.ts: the browser build has no local notifications, and
@@ -7,7 +7,7 @@ import type { NotificationPermission } from './restNotifications';
  */
 
 export type { NextUp } from './restNotificationText';
-export type { NotificationPermission } from './restNotifications';
+export type { NotificationDiagnostics, NotificationPermission } from './restNotifications';
 
 export const restNotificationsSupported = false;
 
@@ -28,3 +28,15 @@ export async function scheduleRestEnd(_seconds: number, _next: NextUp): Promise<
 }
 
 export async function cancelRestEnd(_id: string | null): Promise<void> {}
+
+export function lastNotificationError(): string | null {
+  return null;
+}
+
+export async function readNotificationDiagnostics(): Promise<NotificationDiagnostics> {
+  return { permission: null, scheduled: null, lastError: null };
+}
+
+export async function scheduleTestNotification(): Promise<string | null> {
+  return null;
+}
