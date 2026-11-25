@@ -1,8 +1,6 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 
-import { restNotificationText } from './restNotifications';
-
-jest.mock('expo-notifications', () => ({}));
+import { restNotificationText } from './restNotificationText';
 
 describe('rest notification texts (design/S6 §7)', () => {
   it('same exercise: the set first', () => {

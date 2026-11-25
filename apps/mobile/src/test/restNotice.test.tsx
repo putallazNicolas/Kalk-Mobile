@@ -13,7 +13,7 @@ import { ConfirmHost } from '../components/ConfirmDialog';
 import { ActiveWorkout } from '../components/workout/ActiveWorkout';
 import { nextUpAfter } from '../components/workout/useRestNotification';
 import { DataProvider } from '../data/DataProvider';
-import { restNotificationText } from '../lib/restNotifications';
+import { restNotificationText } from '../lib/restNotificationText';
 
 jest.mock(
   'expo-router',
