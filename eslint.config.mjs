@@ -11,6 +11,9 @@ export default [
       '**/.expo/**',
       '**/coverage/**',
       '**/expo-env.d.ts',
+      // Agent worktrees (gitignored copies of the repo) and the web smoke-test export.
+      '.claude/**',
+      'dist-web/**',
     ],
   },
   // Mobile app: Expo's recommended rules.
