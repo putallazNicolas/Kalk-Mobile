@@ -4,11 +4,16 @@ import {
   EXPORT_FORMAT,
   EXPORT_VERSION,
   MUSCLE_GROUPS,
+  PLAN_CHANGE_DECISIONS,
+  REST_NOTIFICATION_STATES,
+  WORKOUT_ITEM_ORIGINS,
+  WORKOUT_KINDS,
   ValidationError,
   type DataSnapshot,
   type Exercise,
   type ExportPayload,
   type ImportResult,
+  type PlanSnapshotItem,
   type Settings,
 } from '../contracts';
 import { buildSeedExercises } from '../memory';
@@ -150,6 +155,23 @@ function requireRef(ids: Set<string>, id: string, where: string, field: string, 
   }
 }
 
+function readPlanSnapshot(value: unknown): PlanSnapshotItem[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new ValidationError('must be an array');
+  return value.map((raw: unknown, i) => {
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      throw new ValidationError(`[${i}]: must be an object`);
+    }
+    const r = new RowReader(raw as Row, `[${i}]`);
+    return {
+      plannedExerciseId: r.string('plannedExerciseId'),
+      exerciseId: r.string('exerciseId'),
+      order: r.int('order', 0),
+      sets: r.int('sets', 0),
+    };
+  });
+}
+
 function readSettings(raw: unknown): Settings {
   if (raw === undefined || raw === null) return { ...DEFAULT_SETTINGS };
   if (typeof raw !== 'object' || Array.isArray(raw)) {
@@ -162,6 +184,9 @@ function readSettings(raw: unknown): Settings {
       (raw as Row).restTimerEnabled === undefined
         ? DEFAULT_SETTINGS.restTimerEnabled
         : r.bool('restTimerEnabled'),
+    restNotifications:
+      r.optOneOf('restNotifications', REST_NOTIFICATION_STATES) ??
+      DEFAULT_SETTINGS.restNotifications,
   };
 }
 
@@ -264,13 +289,17 @@ export function validateSnapshot(rawData: unknown, options: ValidateOptions): Da
     const dayId = r.optString('dayId');
     return {
       id: r.string('id'),
-      // Dangling links are dropped: the workout keeps its dayNameSnapshot.
+      kind: r.oneOf('kind', WORKOUT_KINDS),
+      // Dangling links are dropped: the workout keeps its name.
       routineId: routineId !== undefined && routineIds.has(routineId) ? routineId : undefined,
       dayId: dayId !== undefined && dayIds.has(dayId) ? dayId : undefined,
-      dayNameSnapshot: r.string('dayNameSnapshot', { allowEmpty: true }),
+      name: r.string('name', { allowEmpty: true }),
       startedAt: r.iso('startedAt'),
       finishedAt: r.optIso('finishedAt'),
       notes: r.optString('notes'),
+      planSnapshot: r.nested('planSnapshot', readPlanSnapshot),
+      planChangeDecision: r.optOneOf('planChangeDecision', PLAN_CHANGE_DECISIONS),
+      deletedAt: r.optIso('deletedAt'),
       ownerId: r.string('ownerId'),
       createdBy: r.string('createdBy'),
     };
@@ -283,6 +312,8 @@ export function validateSnapshot(rawData: unknown, options: ValidateOptions): Da
       workoutId: r.string('workoutId'),
       exerciseId: r.string('exerciseId'),
       order: r.int('order', 0),
+      origin: r.oneOf('origin', WORKOUT_ITEM_ORIGINS),
+      plannedExerciseId: r.optString('plannedExerciseId'),
       plannedSets: r.int('plannedSets', 0),
       plannedReps: r.string('plannedReps', { allowEmpty: true }),
       plannedSetReps: r.nested('plannedSetReps', assertSetRepsList),
@@ -301,6 +332,7 @@ export function validateSnapshot(rawData: unknown, options: ValidateOptions): Da
       id: r.string('id'),
       workoutExerciseId: r.string('workoutExerciseId'),
       setIndex: r.int('setIndex', 0),
+      source: r.oneOf('source', WORKOUT_ITEM_ORIGINS),
       weightKg: r.optNumber('weightKg', 0),
       reps: r.optInt('reps', 0),
       completed: r.bool('completed'),
@@ -332,6 +364,16 @@ export function validateSnapshot(rawData: unknown, options: ValidateOptions): Da
 export function parseImportPayload(payload: unknown, options: ValidateOptions): DataSnapshot {
   const migrated = migrateExportPayload(payload);
   return validateSnapshot(migrated.data, options);
+}
+
+/** Tombstones (soft-deleted workouts) stay on the device: the file has neither them nor their rows. */
+export function withoutDeletedWorkouts(data: DataSnapshot): DataSnapshot {
+  const workouts = data.workouts.filter((w) => w.deletedAt === undefined);
+  const workoutIds = new Set(workouts.map((w) => w.id));
+  const workoutExercises = data.workoutExercises.filter((e) => workoutIds.has(e.workoutId));
+  const exerciseIds = new Set(workoutExercises.map((e) => e.id));
+  const workoutSets = data.workoutSets.filter((s) => exerciseIds.has(s.workoutExerciseId));
+  return { ...data, workouts, workoutExercises, workoutSets };
 }
 
 export function buildExportPayload(

@@ -5,3 +5,4 @@ export {
   migrateExportPayload,
   type ExportMigrationStep,
 } from './exportMigrations';
+export { MUSCLE_REGIONS, muscleRegionOf, type MuscleRegion } from './muscleRegions';

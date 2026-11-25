@@ -159,7 +159,8 @@ function validPayload(): ExportPayload {
         id: 'w1',
         routineId: 'r1',
         dayId: 'd1',
-        dayNameSnapshot: 'D',
+        kind: 'routine',
+        name: 'D',
         startedAt: ts,
         finishedAt: ts,
         ...owner,
@@ -171,6 +172,7 @@ function validPayload(): ExportPayload {
         workoutId: 'w1',
         exerciseId: 'e1',
         order: 0,
+        origin: 'planned',
         plannedSets: 3,
         plannedReps: '10 · 8-10 · AMRAP',
         plannedSetReps: ['10', '8-10', 'AMRAP'],
@@ -182,6 +184,7 @@ function validPayload(): ExportPayload {
         id: 's1',
         workoutExerciseId: 'we1',
         setIndex: 0,
+        source: 'planned',
         weightKg: 50,
         reps: 8,
         completed: true,
@@ -381,7 +384,7 @@ describe('import validation', () => {
     expect(w).not.toBeNull();
     expect(w).not.toHaveProperty('routineId');
     expect(w).not.toHaveProperty('dayId');
-    expect(w?.dayNameSnapshot).toBe('D');
+    expect(w?.name).toBe('D');
   });
 
   it('rejects inconsistent active routines', async () => {
@@ -397,7 +400,7 @@ describe('import validation', () => {
     const payload = viaJson(validPayload()) as unknown as { data: { settings?: unknown } };
     payload.data.settings = { unit: 'lb' };
     await svc.importAllData(payload);
-    expect(await repos.settings.get()).toEqual({ unit: 'lb', restTimerEnabled: true });
+    expect(await repos.settings.get()).toEqual({ ...DEFAULT_SETTINGS, unit: 'lb' });
   });
 });
 

@@ -1,4 +1,5 @@
 import {
+  DEFAULT_SETTINGS,
   EXPORT_FORMAT,
   EXPORT_VERSION,
   NotFoundError,
@@ -110,7 +111,8 @@ describe.each(BACKENDS)('domain services on %s', (_name, build) => {
       expect(w).toMatchObject({
         routineId: routine.id,
         dayId: dayIds[0],
-        dayNameSnapshot: 'Día A',
+        kind: 'routine',
+        name: 'Día A',
         startedAt: ctx.now.toISOString(),
       });
       expect(w.finishedAt).toBeUndefined();
@@ -539,7 +541,7 @@ describe.each(BACKENDS)('domain services on %s', (_name, build) => {
       const data = { ...good.data } as Record<string, unknown>;
       delete data.settings;
       await ctx.services.importAllData({ ...good, data });
-      expect(await ctx.repos.settings.get()).toEqual({ unit: 'kg', restTimerEnabled: true });
+      expect(await ctx.repos.settings.get()).toEqual(DEFAULT_SETTINGS);
     });
   });
 });

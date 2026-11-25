@@ -213,8 +213,15 @@ describe('sqlite migration v1 -> v2 with real old-format data', () => {
     // row counts and untouched tables are identical to before
     expect(await driver.all('SELECT * FROM routines ORDER BY id')).toEqual(before.routines);
     expect(await driver.all('SELECT * FROM routine_days ORDER BY id')).toEqual(before.days);
-    expect(await driver.all('SELECT * FROM workouts ORDER BY id')).toEqual(before.workouts);
-    expect(await driver.all('SELECT * FROM workout_sets ORDER BY id')).toEqual(before.sets);
+    // (v3 renames dayNameSnapshot and adds columns: compare the v2 columns only)
+    const asV2Workout = ({ name, ...row }: Record<string, unknown>) => ({
+      ...row,
+      dayNameSnapshot: name,
+    });
+    const workoutsNow = (await driver.all('SELECT * FROM workouts ORDER BY id')).map(asV2Workout);
+    expect(workoutsNow).toMatchObject(before.workouts);
+    const setsNow = await driver.all('SELECT * FROM workout_sets ORDER BY id');
+    expect(setsNow).toMatchObject(before.sets);
     expect(await driver.all('SELECT * FROM exercises ORDER BY id')).toHaveLength(
       before.exercises.length,
     );
