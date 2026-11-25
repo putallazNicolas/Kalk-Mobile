@@ -15,17 +15,12 @@ import {
 import { useRepositories } from '../../data/DataProvider';
 import { useFocusAsync } from '../../data/useFocusAsync';
 import { attempt } from '../../lib/errors';
-import { moveId } from '../../lib/reorder';
+import { isFinishedExercise, moveId } from '../../lib/reorder';
 import { colors, motion, radii, space, stroke } from '../../theme';
 
 interface Loaded {
   workout: WorkoutDetail;
   names: Map<string, string>;
-}
-
-/** An exercise with every set done: it stays on top and cannot move. */
-function isFinished(e: WorkoutDetail['exercises'][number]): boolean {
-  return e.sets.length > 0 && e.sets.every((s) => s.completed);
 }
 
 /**
@@ -50,8 +45,8 @@ export default function ReorderSheet() {
   else if (!data) body = <EmptyState title="Entrenamiento no encontrado" />;
   else {
     const { workout, names } = data;
-    const finished = workout.exercises.filter(isFinished);
-    const pending = workout.exercises.filter((e) => !isFinished(e));
+    const finished = workout.exercises.filter(isFinishedExercise);
+    const pending = workout.exercises.filter((e) => !isFinishedExercise(e));
     const pendingIds = pending.map((e) => e.id);
 
     const move = async (index: number, delta: -1 | 1) => {

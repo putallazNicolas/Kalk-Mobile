@@ -26,18 +26,21 @@ import { useRepositories, useServices } from '../../data/DataProvider';
 import { attempt } from '../../lib/errors';
 import { inputToKg, inputToReps, weightToInput } from '../../lib/format';
 import { haptics } from '../../lib/haptics';
+import { isFinishedExercise, moveId } from '../../lib/reorder';
 import { restSecondsFor } from '../../lib/rest';
 import { useNow } from '../../lib/useNow';
 import { firstPendingId, prSetIds, workoutTotals } from '../../lib/workoutStats';
 import { colors, radii, space, stroke } from '../../theme';
-import { ActionMenu } from '../ActionMenu';
 import { Button } from '../Button';
 import { confirm } from '../ConfirmDialog';
 import { ScreenContainer } from '../ScreenContainer';
 import { ScreenHeader } from '../ScreenHeader';
 import { Text } from '../Text';
+import { UNDO_TOAST_MS } from '../Toast';
+import { showUndoToast } from '../UndoToast';
 import { AddExerciseButton, EmptyWorkout } from './EmptyWorkout';
 import { ExerciseBlock, type ExerciseMode, type SetInput } from './ExerciseBlock';
+import { ExerciseMenu } from './ExerciseMenu';
 import { RestTimerBar } from './RestTimerBar';
 import { WorkoutMenu } from './WorkoutMenu';
 import { ProgressSegments, WorkoutStats } from './WorkoutProgress';
@@ -53,7 +56,18 @@ interface ActiveWorkoutProps {
   routineName?: string;
   unit: WeightUnit;
   restTimerEnabled: boolean;
+  /** How long a removal waits for "Deshacer" before it is written (the toast's 5 s). */
+  removalDelayMs?: number;
 }
+
+/**
+ * A set or an exercise the person removed: it is already gone from the screen, but nothing is
+ * written until the undo toast expires (the core cannot restore a row without losing its plan link).
+ */
+type PendingRemoval = { timer: ReturnType<typeof setTimeout> | null } & (
+  | { kind: 'set'; set: WorkoutSet; exerciseId: string; index: number }
+  | { kind: 'exercise'; exercise: WorkoutExerciseDetail; index: number; wasOpen: boolean }
+);
 
 /** Pause so the last row is seen turning green before the exercise folds (design/S3). */
 const COLLAPSE_PAUSE_MS = 350;
@@ -78,6 +92,11 @@ function restFrom(seconds: number): { endsAt: number; total: number } {
   return { endsAt: Date.now() + seconds * 1000, total: seconds };
 }
 
+/** setIndex follows the position, as the repositories renumber it after a removal. */
+function renumbered(sets: WorkoutSet[]): WorkoutSet[] {
+  return sets.map((s, i) => (s.setIndex === i ? s : { ...s, setIndex: i }));
+}
+
 function patchSetIn(w: WorkoutDetail, setId: string, patch: Partial<WorkoutSet>): WorkoutDetail {
   return {
     ...w,
@@ -97,6 +116,7 @@ export function ActiveWorkout({
   routineName,
   unit,
   restTimerEnabled,
+  removalDelayMs = UNDO_TOAST_MS,
 }: ActiveWorkoutProps) {
   useScreenAwake();
   const repos = useRepositories();
@@ -128,6 +148,8 @@ export function ActiveWorkout({
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Saves run one after another, in tap order. */
   const queue = useRef<Promise<unknown>>(Promise.resolve());
+  /** The removal waiting for its "Deshacer" (only one: a new one writes the previous). */
+  const pendingRemoval = useRef<PendingRemoval | null>(null);
 
   function mutateWorkout(fn: (w: WorkoutDetail) => WorkoutDetail) {
     workoutRef.current = fn(workoutRef.current);
@@ -171,10 +193,13 @@ export function ActiveWorkout({
     const local = workoutRef.current;
     if (local.exercises.map((e) => `${e.id}:${e.order}`).join(',') === incomingStructure) return;
     const mine = new Map(local.exercises.map((e) => [e.id, e]));
-    const added = initial.exercises.filter((e) => !mine.has(e.id));
+    // An exercise waiting for its "Deshacer" is still in the database but gone from the screen.
+    const hidden = pendingRemoval.current?.kind === 'exercise' ? pendingRemoval.current : null;
+    const incoming = initial.exercises.filter((e) => e.id !== hidden?.exercise.id);
+    const added = incoming.filter((e) => !mine.has(e.id));
     mutateWorkout((w) => ({
       ...w,
-      exercises: initial.exercises.map((e) => {
+      exercises: incoming.map((e) => {
         const current = mine.get(e.id);
         return current ? { ...current, order: e.order } : e;
       }),
@@ -189,6 +214,10 @@ export function ActiveWorkout({
       // first one just added, which is what the person is about to do (design/S6 §1, decision 4).
       if (expandedRef.current === null) setExpanded(added[0]!.id);
     }
+    // The open exercise was replaced (picker in replace mode): open what took its place.
+    const open = expandedRef.current;
+    if (open !== null && !incoming.some((e) => e.id === open))
+      setExpanded(added[0]?.id ?? firstPendingId({ ...initial, exercises: incoming }));
     // Only a different structure should merge; the other values are read at that moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomingStructure]);
@@ -213,7 +242,9 @@ export function ActiveWorkout({
   /** Persist the typed kg/reps of a set (called on blur). */
   function persist(setId: string) {
     const input = inputsRef.current[setId];
-    if (!input) return Promise.resolve();
+    // A removed set (waiting for its "Deshacer") is not saved again.
+    const exists = workoutRef.current.exercises.some((e) => e.sets.some((s) => s.id === setId));
+    if (!input || !exists) return Promise.resolve();
     const weightKg = inputToKg(input.kg, unit);
     const reps = inputToReps(input.reps);
     return enqueue(async () => {
@@ -248,16 +279,6 @@ export function ActiveWorkout({
       }
     await Promise.all(writes);
   }
-
-  // Persist pending edits when the app goes to the background.
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') void flushAll();
-    });
-    return () => sub.remove();
-    // flushAll only reads refs and stable props.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /** Folds the finished exercise and opens the next one (after a short pause). */
   function scheduleCollapse(exerciseId: string) {
@@ -361,17 +382,174 @@ export function ActiveWorkout({
     setExpanded(ex.id);
   }
 
-  async function removeLastSet(ex: WorkoutExerciseDetail) {
-    const current = workoutRef.current.exercises.find((e) => e.id === ex.id);
-    const last = current?.sets[current.sets.length - 1];
-    if (!current || !last || current.sets.length <= 1) return;
-    const ok = await enqueue(() =>
-      attempt(async () => {
-        await repos.workouts.removeSet(last.id);
+  /** Puts a removed set or exercise back on the screen (undo, or the write failed). */
+  function restoreLocal(p: PendingRemoval) {
+    if (p.kind === 'set') {
+      patchExercise(p.exerciseId, (e) => {
+        const sets = [...e.sets];
+        sets.splice(Math.min(p.index, sets.length), 0, p.set);
+        return { ...e, sets: renumbered(sets) };
+      });
+      return;
+    }
+    mutateWorkout((w) => {
+      const list = [...w.exercises];
+      list.splice(Math.min(p.index, list.length), 0, p.exercise);
+      return { ...w, exercises: list.map((e, i) => (e.order === i ? e : { ...e, order: i })) };
+    });
+    if (p.wasOpen) setExpanded(p.exercise.id);
+  }
+
+  /** Writes the removal to the database (timer, a newer removal, finishing, leaving). */
+  function commitRemoval(p: PendingRemoval): Promise<void> {
+    if (p.timer) clearTimeout(p.timer);
+    if (pendingRemoval.current === p) pendingRemoval.current = null;
+    return enqueue(async () => {
+      const ok = await attempt(async () => {
+        if (p.kind === 'set') await repos.workouts.removeSet(p.set.id);
+        else await repos.workouts.removeWorkoutExercise(p.exercise.id);
         return true;
-      }),
+      });
+      if (!ok) restoreLocal(p);
+      // The database renumbers the exercises that stay.
+      else if (p.kind === 'exercise')
+        mutateWorkout((w) => ({
+          ...w,
+          exercises: w.exercises.map((e, i) => ({ ...e, order: i })),
+        }));
+    });
+  }
+
+  /** Writes the waiting removal right now (nothing is left behind when the screen is done). */
+  function flushRemoval(): Promise<void> {
+    const p = pendingRemoval.current;
+    return p ? commitRemoval(p) : Promise.resolve();
+  }
+
+  // Persist pending edits and removals when the app goes to the background, and the removal
+  // that is still waiting for its "Deshacer" if the screen goes away.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') return;
+      void flushAll();
+      void flushRemoval();
+    });
+    return () => {
+      sub.remove();
+      void flushRemoval();
+    };
+    // flushAll and flushRemoval only read refs and stable props.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function undoRemoval(p: PendingRemoval) {
+    // Already written (another removal, finishing, a sheet opened): nothing to undo.
+    if (pendingRemoval.current !== p) return;
+    if (p.timer) clearTimeout(p.timer);
+    pendingRemoval.current = null;
+    restoreLocal(p);
+  }
+
+  /** The row is already gone from the screen; the toast offers "Deshacer" and then it is written. */
+  function beginRemoval(p: PendingRemoval, message: string) {
+    const previous = pendingRemoval.current;
+    if (previous) void commitRemoval(previous);
+    pendingRemoval.current = p;
+    p.timer = setTimeout(() => void commitRemoval(p), removalDelayMs);
+    showUndoToast({ message, onUndo: () => undoRemoval(p) });
+  }
+
+  /** Swipe, or the "Quitar serie" accessibility action. The last set of an exercise removes the exercise. */
+  function removeSet(setId: string) {
+    const ex = workoutRef.current.exercises.find((e) => e.sets.some((s) => s.id === setId));
+    const set = ex?.sets.find((s) => s.id === setId);
+    if (!ex || !set) return;
+    if (ex.sets.length === 1) {
+      void removeExercise(ex);
+      return;
+    }
+    const index = ex.sets.indexOf(set);
+    patchExercise(ex.id, (e) => ({ ...e, sets: renumbered(e.sets.filter((s) => s.id !== setId)) }));
+    // Removing the only pending set leaves the exercise finished: fold it like a ✓ would.
+    const left = workoutRef.current.exercises.find((e) => e.id === ex.id);
+    if (left && expandedRef.current === ex.id && !left.sets.some((s) => !s.completed))
+      scheduleCollapse(ex.id);
+    beginRemoval({ kind: 'set', set, exerciseId: ex.id, index, timer: null }, 'Serie quitada');
+  }
+
+  async function removeExercise(ex: WorkoutExerciseDetail) {
+    const name = names[ex.exerciseId] ?? 'Ejercicio';
+    const done = ex.sets.filter((s) => s.completed).length;
+    if (done > 0) {
+      const ok = await confirm({
+        title: `¿Quitar ${name}?`,
+        message: `${done === 1 ? 'Se pierde la serie que ya hiciste' : `Se pierden las ${done} series que ya hiciste`} de este ejercicio.`,
+        confirmLabel: 'Quitar',
+        cancelLabel: 'Cancelar',
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+    const index = workoutRef.current.exercises.findIndex((e) => e.id === ex.id);
+    const current = workoutRef.current.exercises[index];
+    if (!current) return;
+    const wasOpen = expandedRef.current === ex.id;
+    mutateWorkout((w) => ({ ...w, exercises: w.exercises.filter((e) => e.id !== ex.id) }));
+    if (wasOpen) setExpanded(firstPendingId(workoutRef.current, index - 1));
+    beginRemoval(
+      { kind: 'exercise', exercise: current, index, wasOpen, timer: null },
+      `${name} quitado`,
     );
-    if (ok) patchExercise(ex.id, (e) => ({ ...e, sets: e.sets.filter((s) => s.id !== last.id) }));
+  }
+
+  /** Moves a pending exercise one place; finished ones stay on top like in the reorder sheet. */
+  function moveExercise(ex: WorkoutExerciseDetail, delta: -1 | 1) {
+    const list = workoutRef.current.exercises;
+    const pending = list.filter((e) => !isFinishedExercise(e));
+    const from = pending.findIndex((e) => e.id === ex.id);
+    if (from < 0) return;
+    const ordered = [
+      ...list.filter(isFinishedExercise),
+      ...moveId(
+        pending.map((e) => e.id),
+        from,
+        delta,
+      ).map((id) => pending.find((e) => e.id === id)!),
+    ];
+    mutateWorkout((w) => ({ ...w, exercises: ordered.map((e, i) => ({ ...e, order: i })) }));
+    const ids = ordered.map((e) => e.id);
+    // An exercise waiting for its "Deshacer" is still in the database: keep it where it was.
+    const waiting = pendingRemoval.current?.kind === 'exercise' ? pendingRemoval.current : null;
+    if (waiting) ids.splice(Math.min(waiting.index, ids.length), 0, waiting.exercise.id);
+    void enqueue(() => attempt(() => repos.workouts.reorderWorkoutExercises(workout.id, ids)));
+  }
+
+  /** Opens the picker in single-select mode; the new exercise takes the place of this one. */
+  async function replaceExercise(ex: WorkoutExerciseDetail) {
+    const name = names[ex.exerciseId] ?? 'Ejercicio';
+    const done = ex.sets.filter((s) => s.completed).length;
+    if (done > 0) {
+      const ok = await confirm({
+        title: `¿Reemplazar ${name}?`,
+        message: `${done === 1 ? 'Se pierde la serie que ya hiciste' : `Se pierden las ${done} series que ya hiciste`} de este ejercicio.`,
+        confirmLabel: 'Reemplazar',
+        cancelLabel: 'Cancelar',
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+    await flushRemoval();
+    await flushAll();
+    const current = workoutRef.current.exercises.find((e) => e.id === ex.id);
+    if (!current) return;
+    router.push({
+      pathname: '/elegir-ejercicio',
+      params: {
+        workoutId: workoutRef.current.id,
+        afterOrder: String(current.order),
+        replaceId: current.id,
+      },
+    });
   }
 
   async function toggleSkip(ex: WorkoutExerciseDetail) {
@@ -391,6 +569,7 @@ export function ActiveWorkout({
 
   /** Deletes the workout in progress for real (it never reached the history) and goes to Hoy. */
   async function discardNow() {
+    await flushRemoval();
     await queue.current;
     const done = await attempt(async () => {
       await repos.workouts.discard(workoutRef.current.id);
@@ -426,6 +605,7 @@ export function ActiveWorkout({
   }
 
   async function addExercise() {
+    await flushRemoval();
     await flushAll();
     const current = currentExercise();
     router.push({
@@ -438,6 +618,7 @@ export function ActiveWorkout({
   }
 
   async function reorderExercises() {
+    await flushRemoval();
     await flushAll();
     router.push({
       pathname: '/reordenar/[workoutId]',
@@ -471,6 +652,8 @@ export function ActiveWorkout({
       if (!ok) return;
     }
     setFinishing(true);
+    // The removals are written first, so the totals and the summary's plan diff are right.
+    await flushRemoval();
     await flushAll();
     await queue.current;
     const done = await attempt(() => services.finishWorkout(workoutRef.current.id));
@@ -490,6 +673,9 @@ export function ActiveWorkout({
 
   const elapsed = (now - Date.parse(workout.startedAt)) / 1000;
   const menuExercise = workout.exercises.find((e) => e.id === menuId);
+  // Finished exercises stay on top: only the others move, among themselves.
+  const movable = workout.exercises.filter((e) => !isFinishedExercise(e));
+  const menuPosition = movable.findIndex((e) => e.id === menuId);
   const totals = workoutTotals(workout);
 
   // Mode of every exercise: the open one, finished ones, the next pending one and the rest.
@@ -586,6 +772,8 @@ export function ActiveWorkout({
               setExpanded(expandedRef.current === e.id ? null : e.id);
             }}
             onOpenMenu={() => setMenuId(e.id)}
+            onAddSet={() => void addSet(e)}
+            onRemoveSet={removeSet}
             onChangeKg={(id, t) => mutateInputs(id, { kg: t })}
             onChangeReps={(id, t) => mutateInputs(id, { reps: t })}
             onBlurSet={persist}
@@ -623,25 +811,22 @@ export function ActiveWorkout({
           onDismiss={() => setRest(null)}
         />
       ) : null}
-      <ActionMenu
-        visible={menuExercise !== undefined}
-        title={menuExercise ? names[menuExercise.exerciseId] : undefined}
-        onClose={() => setMenuId(null)}
-        items={
-          menuExercise
-            ? [
-                { label: 'Agregar serie', onPress: () => addSet(menuExercise) },
-                ...(menuExercise.sets.length > 1
-                  ? [{ label: 'Quitar serie', onPress: () => removeLastSet(menuExercise) }]
-                  : []),
-                {
-                  label: menuExercise.skipped ? 'Reactivar ejercicio' : 'Saltar ejercicio',
-                  onPress: () => toggleSkip(menuExercise),
-                },
-              ]
-            : []
-        }
-      />
+      {menuExercise ? (
+        <ExerciseMenu
+          visible
+          exerciseName={names[menuExercise.exerciseId] ?? 'Ejercicio'}
+          skipped={menuExercise.skipped}
+          canMoveUp={menuPosition > 0}
+          canMoveDown={menuPosition >= 0 && menuPosition < movable.length - 1}
+          onAddSet={() => void addSet(menuExercise)}
+          onReplace={() => void replaceExercise(menuExercise)}
+          onMoveUp={() => moveExercise(menuExercise, -1)}
+          onMoveDown={() => moveExercise(menuExercise, 1)}
+          onToggleSkip={() => void toggleSkip(menuExercise)}
+          onRemove={() => void removeExercise(menuExercise)}
+          onClose={() => setMenuId(null)}
+        />
+      ) : null}
     </ScreenContainer>
   );
 }

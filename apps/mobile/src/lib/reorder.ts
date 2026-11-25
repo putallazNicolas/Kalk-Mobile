@@ -10,3 +10,8 @@ export function moveId(ids: string[], index: number, delta: -1 | 1): string[] {
   next[target] = a;
   return next;
 }
+
+/** An exercise with every set done: it stays on top and cannot move (reorder sheet, exercise menu). */
+export function isFinishedExercise(e: { sets: { completed: boolean }[] }): boolean {
+  return e.sets.length > 0 && e.sets.every((s) => s.completed);
+}
