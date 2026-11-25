@@ -5,6 +5,7 @@ import ReanimatedSwipeable, {
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useAnimatedReaction, useSharedValue, type SharedValue } from 'react-native-reanimated';
 
+import { deleteAccessibility } from '../lib/deleteAccessibility';
 import { colors, radii, space } from '../theme';
 
 import { Icon } from './icons';
@@ -26,15 +27,7 @@ interface SwipeToDeleteProps {
   radius?: number;
 }
 
-/** Props that give a row the same action to assistive tech (a swipe cannot be done with VoiceOver). */
-export function deleteAccessibility(label: string, onDelete: () => void) {
-  return {
-    accessibilityActions: [{ name: 'delete', label }],
-    onAccessibilityAction: (event: { nativeEvent: { actionName: string } }) => {
-      if (event.nativeEvent.actionName === 'delete') onDelete();
-    },
-  };
-}
+export { deleteAccessibility };
 
 function DeleteAction({
   label,

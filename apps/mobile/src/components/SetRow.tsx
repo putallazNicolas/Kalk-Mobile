@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { deleteAccessibility } from '../lib/deleteAccessibility';
 import { haptics } from '../lib/haptics';
 import { colors, hit, inputType, motion, radii, space, stroke } from '../theme';
 
@@ -33,6 +34,10 @@ interface SetRowProps {
   focused?: boolean;
   /** Shows the gold PR badge next to the previous text. */
   pr?: boolean;
+  /** Added during the workout (source "added"): a pending one shows the small gray AGREGADA. */
+  added?: boolean;
+  /** Removes the set; gives the row the "Quitar serie" accessibility action (a swipe has none). */
+  onRemove?: () => void;
   onChangeKg: (value: string) => void;
   onChangeReps: (value: string) => void;
   onToggleComplete: () => void;
@@ -94,6 +99,8 @@ export function SetRow({
   completed,
   focused = false,
   pr = false,
+  added = false,
+  onRemove,
   onChangeKg,
   onChangeReps,
   onToggleComplete,
@@ -187,24 +194,35 @@ export function SetRow({
   // "8-10" and "10" keep the big size; words such as AMRAP go to 16 so they fit the cell.
   const isTextPlaceholder = !!repsPlaceholder && !/^[\d\s\-–]+$/.test(repsPlaceholder);
   const inputBase = [styles.input, completed && styles.inputCompleted];
+  const showAdded = added && !completed;
 
   return (
     <Animated.View
       style={[styles.row, { minHeight: isFocus ? hit.rowFocus : hit.row }, rowAnimated]}
     >
       <Animated.View pointerEvents="none" style={[styles.frame, frameAnimated]} />
-      <Text
-        variant="numM"
+      <View
+        accessible
+        accessibilityLabel={`Serie ${index}${showAdded ? ', agregada' : ''}`}
         style={styles.index}
-        color={completed ? 'success' : isFocus ? 'accent' : 'textTertiary'}
+        {...(onRemove ? deleteAccessibility('Quitar serie', onRemove) : {})}
       >
-        {index}
-      </Text>
-      <View style={styles.previousWrap}>
-        <Text variant="numS" color={isFocus ? 'textSecondary' : 'textTertiary'} numberOfLines={1}>
-          {previousText ?? '—'}
+        <Text variant="numM" color={completed ? 'success' : isFocus ? 'accent' : 'textTertiary'}>
+          {index}
         </Text>
+      </View>
+      <View style={styles.previousWrap}>
+        {previousText !== undefined || !showAdded ? (
+          <Text variant="numS" color={isFocus ? 'textSecondary' : 'textTertiary'} numberOfLines={1}>
+            {previousText ?? '—'}
+          </Text>
+        ) : null}
         {pr ? <PrBadge /> : null}
+        {showAdded ? (
+          <Text variant="tagSmall" color="textTertiary" numberOfLines={1} style={styles.addedTag}>
+            Agregada
+          </Text>
+        ) : null}
       </View>
       <TextInput
         ref={kgInputRef}
@@ -296,7 +314,8 @@ const styles = StyleSheet.create({
     borderWidth: stroke.regular,
     borderColor: colors.accent,
   },
-  index: { width: 24, textAlign: 'center' },
+  index: { width: 24, alignItems: 'center' },
+  addedTag: { flexShrink: 1 },
   previousWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm - 2 },
   input: {
     ...inputType.numMInput,

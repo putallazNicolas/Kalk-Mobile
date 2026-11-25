@@ -20,7 +20,11 @@ import { colors, hit, motion, radii, space, stroke } from '../../theme';
 import { Icon } from '../icons';
 import { InfoTag } from '../InfoTag';
 import { SetRow } from '../SetRow';
+import { SwipeToDelete } from '../SwipeToDelete';
 import { Text } from '../Text';
+import { AddSetButton } from './AddSetButton';
+
+const LONG_PRESS_MS = 400;
 
 export interface SetInput {
   kg: string;
@@ -51,7 +55,10 @@ interface ExerciseBlockProps {
   /** The set being worked on (first pending one) when the card is open. */
   focusSetId: string | null;
   onToggleExpand: () => void;
+  /** The ⋯ of the open card; also a long press (400 ms) on the other rows. */
   onOpenMenu: () => void;
+  onAddSet: () => void;
+  onRemoveSet: (setId: string) => void;
   onChangeKg: (setId: string, text: string) => void;
   onChangeReps: (setId: string, text: string) => void;
   onBlurSet: (setId: string) => void;
@@ -90,6 +97,8 @@ export function ExerciseBlock({
   focusSetId,
   onToggleExpand,
   onOpenMenu,
+  onAddSet,
+  onRemoveSet,
   onChangeKg,
   onChangeReps,
   onBlurSet,
@@ -116,6 +125,8 @@ export function ExerciseBlock({
     : LinearTransition.duration(motion.slow).easing(motion.easeOut);
   const enter = reduced ? FadeIn.duration(motion.reduced) : FadeInDown.duration(motion.slow);
   const exit = FadeOut.duration(reduced ? motion.reduced : motion.fast);
+  /** Long press on a collapsed row opens the exercise menu (design/S6 ExerciseMenu). */
+  const longPress = { onLongPress: onOpenMenu, delayLongPress: LONG_PRESS_MS };
 
   let content;
   if (mode === 'done') {
@@ -125,8 +136,9 @@ export function ExerciseBlock({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${name}, completado, ${done} de ${sets.length} series`}
-          accessibilityHint="Tocá para abrir y editar"
+          accessibilityHint="Tocá para abrir y editar, mantené apretado para ver opciones"
           onPress={onToggleExpand}
+          {...longPress}
           style={styles.doneRow}
         >
           <View style={styles.doneDisc}>
@@ -218,33 +230,56 @@ export function ExerciseBlock({
           {sets.map((s, i) => {
             const input = inputs[s.id] ?? { kg: '', reps: '' };
             const next = sets[i + 1];
+            const before = sets[i - 1];
+            const isAdded = s.source === 'added';
+            // An added set has no plan of its own: it shows the reps of the set before it.
+            const lastReps = before
+              ? inputs[before.id]?.reps || (before.reps === undefined ? '' : String(before.reps))
+              : '';
             return (
-              <SetRow
+              <Animated.View
                 key={s.id}
-                index={i + 1}
-                previousText={previousText(previous, s.setIndex, unit)}
-                kg={input.kg}
-                reps={input.reps}
-                repsPlaceholder={
-                  plannedRepsForSet(exercise.plannedSetReps, i) || exercise.plannedReps
-                }
-                shakeSignal={shake?.setId === s.id ? shake.n : 0}
-                completed={s.completed}
-                focused={s.id === focusSetId}
-                pr={prSets.has(s.id)}
-                onChangeKg={(t) => onChangeKg(s.id, t)}
-                onChangeReps={(t) => onChangeReps(s.id, t)}
-                onBlurKg={() => onBlurSet(s.id)}
-                onBlurReps={() => onBlurSet(s.id)}
-                onToggleComplete={() => onToggleComplete(s.id)}
-                kgInputRef={(el) => registerRef(`${s.id}:kg`, el)}
-                repsInputRef={(el) => registerRef(`${s.id}:reps`, el)}
-                onSubmitKg={() => focusKey(`${s.id}:reps`)}
-                onSubmitReps={next ? () => focusKey(`${next.id}:kg`) : undefined}
-              />
+                layout={layout}
+                entering={isAdded ? enter : undefined}
+                exiting={exit}
+              >
+                <SwipeToDelete
+                  actionLabel="Quitar"
+                  radius={radii.md}
+                  onDelete={() => onRemoveSet(s.id)}
+                >
+                  <SetRow
+                    index={i + 1}
+                    previousText={previousText(previous, s.setIndex, unit)}
+                    kg={input.kg}
+                    reps={input.reps}
+                    repsPlaceholder={
+                      (isAdded && lastReps) ||
+                      plannedRepsForSet(exercise.plannedSetReps, i) ||
+                      exercise.plannedReps
+                    }
+                    shakeSignal={shake?.setId === s.id ? shake.n : 0}
+                    completed={s.completed}
+                    focused={s.id === focusSetId}
+                    pr={prSets.has(s.id)}
+                    added={isAdded}
+                    onRemove={() => onRemoveSet(s.id)}
+                    onChangeKg={(t) => onChangeKg(s.id, t)}
+                    onChangeReps={(t) => onChangeReps(s.id, t)}
+                    onBlurKg={() => onBlurSet(s.id)}
+                    onBlurReps={() => onBlurSet(s.id)}
+                    onToggleComplete={() => onToggleComplete(s.id)}
+                    kgInputRef={(el) => registerRef(`${s.id}:kg`, el)}
+                    repsInputRef={(el) => registerRef(`${s.id}:reps`, el)}
+                    onSubmitKg={() => focusKey(`${s.id}:reps`)}
+                    onSubmitReps={next ? () => focusKey(`${next.id}:kg`) : undefined}
+                  />
+                </SwipeToDelete>
+              </Animated.View>
             );
           })}
         </View>
+        <AddSetButton onPress={onAddSet} />
       </Animated.View>
     );
   } else if (mode === 'next') {
@@ -253,8 +288,9 @@ export function ExerciseBlock({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Siguiente: ${name}, ${planned}`}
-          accessibilityHint="Tocá para abrir"
+          accessibilityHint="Tocá para abrir, mantené apretado para ver opciones"
           onPress={onToggleExpand}
+          {...longPress}
           style={styles.nextRow}
         >
           <View style={styles.flex}>
@@ -305,8 +341,9 @@ export function ExerciseBlock({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${name}, ${planned}`}
-          accessibilityHint="Tocá para abrir"
+          accessibilityHint="Tocá para abrir, mantené apretado para ver opciones"
           onPress={onToggleExpand}
+          {...longPress}
           style={styles.laterRow}
         >
           <View style={[styles.flex, styles.labelRow]}>

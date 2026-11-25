@@ -45,6 +45,8 @@ interface ExerciseFormProps {
   /** Same for the add-to-workout mode: the workout in progress and where the exercises enter. */
   workoutId?: string;
   afterOrder?: string;
+  /** Replace mode: the workout exercise the picked one takes the place of. */
+  replaceId?: string;
   /** Prefill for a new exercise (the search text that found nothing). */
   initialName?: string;
 }
@@ -59,6 +61,7 @@ export function ExerciseForm({
   dayId,
   workoutId,
   afterOrder,
+  replaceId,
   initialName,
 }: ExerciseFormProps) {
   const repos = useRepositories();
@@ -94,6 +97,7 @@ export function ExerciseForm({
       dayId={dayId}
       workoutId={workoutId}
       afterOrder={afterOrder}
+      replaceId={replaceId}
       initialName={initialName}
     />
   );
@@ -104,12 +108,15 @@ function FormBody({
   dayId,
   workoutId,
   afterOrder,
+  replaceId,
   initialName,
 }: {
   exercise?: Exercise;
   dayId?: string;
   workoutId?: string;
   afterOrder?: string;
+  /** Replace mode: the workout exercise the picked one takes the place of. */
+  replaceId?: string;
   initialName?: string;
 }) {
   const repos = useRepositories();
@@ -184,6 +191,7 @@ function FormBody({
         ...(dayId ? { dayId } : {}),
         ...(workoutId ? { workoutId } : {}),
         ...(afterOrder !== undefined ? { afterOrder } : {}),
+        ...(replaceId ? { replaceId } : {}),
         savedId: saved.id,
         savedKind: editing ? 'edited' : 'created',
         savedAt: String(Date.now()),

@@ -116,6 +116,7 @@ const ICONS = {
       <Path d="M3 9l1.5-3L6 9M3 15l1.5 3L6 15" />
     </>
   ),
+  replace: <Path d="M4 8h14l-3-3M20 16H6l3 3" />,
   empty: (
     <>
       <Path d="M3 13l2.5-7.5h13L21 13" />
