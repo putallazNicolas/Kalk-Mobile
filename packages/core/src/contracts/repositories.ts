@@ -18,12 +18,15 @@ import type {
   MuscleGroup,
   PlannedExercise,
   PlannedSet,
+  PlanSnapshotItem,
   RepsMode,
   Routine,
   RoutineDay,
   Settings,
   Workout,
   WorkoutExercise,
+  WorkoutItemOrigin,
+  WorkoutKind,
   WorkoutSet,
 } from './entities';
 
@@ -174,23 +177,33 @@ export interface WorkoutDetail extends Workout {
   exercises: WorkoutExerciseDetail[];
 }
 
+/** One exercise of a new workout, or one added during it. */
+export interface NewWorkoutExerciseInput {
+  exerciseId: ID;
+  /** Defaults to "planned" in `create`, always "added" in `addWorkoutExercises`. */
+  origin?: WorkoutItemOrigin;
+  plannedExerciseId?: ID;
+  plannedSets: number;
+  plannedReps: string;
+  /** Planned reps per set (snapshot of PlannedExercise.plannedSets). */
+  plannedSetReps: string[];
+  restSeconds?: number;
+  notes?: string;
+  /** One entry per set; length is usually plannedSets. Sets are created with source "planned". */
+  sets: { weightKg?: number; reps?: number }[];
+}
+
 export interface NewWorkoutInput {
+  kind: WorkoutKind;
   routineId?: ID;
   dayId?: ID;
-  dayNameSnapshot: string;
+  /** Day name (routine) or FREE_WORKOUT_DEFAULT_NAME (free). */
+  name: string;
+  planSnapshot?: PlanSnapshotItem[];
   /** Defaults to now. */
   startedAt?: string;
-  exercises: {
-    exerciseId: ID;
-    plannedSets: number;
-    plannedReps: string;
-    /** Planned reps per set (snapshot of PlannedExercise.plannedSets). */
-    plannedSetReps: string[];
-    restSeconds?: number;
-    notes?: string;
-    /** One entry per set; length is usually plannedSets. */
-    sets: { weightKg?: number; reps?: number }[];
-  }[];
+  /** Empty for a free workout. */
+  exercises: NewWorkoutExerciseInput[];
 }
 
 /** One past session of a given exercise. */
@@ -204,6 +217,14 @@ export type WorkoutSetPatch = Patch<
   Pick<WorkoutSet, 'weightKg' | 'reps' | 'completed' | 'completedAt'>
 >;
 
+export type WorkoutPatch = Patch<
+  Pick<Workout, 'finishedAt' | 'notes' | 'name' | 'planChangeDecision'>
+>;
+
+/**
+ * Soft-deleted workouts (`deletedAt` set) are invisible to every method below except `restore`:
+ * getById returns null, lists and history skip them. (Tombstones are kept for V2 sync.)
+ */
 export interface WorkoutRepo {
   /** Creates the workout, its exercises and sets atomically. */
   create(input: NewWorkoutInput): Promise<WorkoutDetail>;
@@ -214,12 +235,35 @@ export interface WorkoutRepo {
   listFinished(options?: { limit?: number; offset?: number; since?: string }): Promise<Workout[]>;
   /** Most recent finished workout of a routine (by startedAt). */
   getLastFinishedForRoutine(routineId: ID): Promise<Workout | null>;
-  update(id: ID, patch: Patch<Pick<Workout, 'finishedAt' | 'notes'>>): Promise<Workout>;
-  /** Deletes the workout with its exercises and sets (used to discard). */
-  delete(id: ID): Promise<void>;
+  /** `name` is trimmed; ValidationError if empty or longer than WORKOUT_NAME_MAX_LENGTH. */
+  update(id: ID, patch: WorkoutPatch): Promise<Workout>;
+  /**
+   * Discards a workout IN PROGRESS: deletes it with its exercises and sets, for real (it never
+   * reached the history). ValidationError if it is finished (use softDelete).
+   */
+  discard(id: ID): Promise<void>;
+  /** Deletes a FINISHED workout: sets `deletedAt` (it disappears everywhere). */
+  softDelete(id: ID): Promise<void>;
+  /** Undo of softDelete: clears `deletedAt`. NotFoundError if the id never existed. */
+  restore(id: ID): Promise<void>;
 
   updateWorkoutExercise(id: ID, patch: { skipped?: boolean }): Promise<WorkoutExercise>;
-  /** Appends a set (setIndex = current count). Copies weightKg from the last set. */
+  /**
+   * Inserts exercises (origin "added") right after the one at `afterOrder` (end when undefined),
+   * in the given order, and renumbers the rest. Returns them with their sets.
+   */
+  addWorkoutExercises(
+    workoutId: ID,
+    inputs: NewWorkoutExerciseInput[],
+    options?: { afterOrder?: number },
+  ): Promise<WorkoutExerciseDetail[]>;
+  /** Removes a workout exercise with its sets and renumbers the rest. */
+  removeWorkoutExercise(id: ID): Promise<void>;
+  /** `orderedIds` must contain exactly the workout's exercise ids. */
+  reorderWorkoutExercises(workoutId: ID, orderedIds: ID[]): Promise<void>;
+  /**
+   * Appends a set (setIndex = current count, source "added"). Copies weightKg from the last set.
+   */
   addSet(workoutExerciseId: ID): Promise<WorkoutSet>;
   /** Removes a set and re-indexes the remaining ones. */
   removeSet(setId: ID): Promise<void>;

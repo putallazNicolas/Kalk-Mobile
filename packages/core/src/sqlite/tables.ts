@@ -59,14 +59,19 @@ export const WORKOUTS: TableSpec<Workout> = {
     'id',
     'routineId',
     'dayId',
-    'dayNameSnapshot',
+    'kind',
+    'name',
     'startedAt',
     'finishedAt',
     'notes',
+    'planSnapshot',
+    'planChangeDecision',
+    'deletedAt',
     'ownerId',
     'createdBy',
   ],
   bools: [],
+  json: ['planSnapshot'],
 };
 export const WORKOUT_EXERCISES: TableSpec<WorkoutExercise> = {
   table: 'workout_exercises',
@@ -75,6 +80,8 @@ export const WORKOUT_EXERCISES: TableSpec<WorkoutExercise> = {
     'workoutId',
     'exerciseId',
     'order',
+    'origin',
+    'plannedExerciseId',
     'plannedSets',
     'plannedReps',
     'plannedSetReps',
@@ -87,7 +94,16 @@ export const WORKOUT_EXERCISES: TableSpec<WorkoutExercise> = {
 };
 export const WORKOUT_SETS: TableSpec<WorkoutSet> = {
   table: 'workout_sets',
-  cols: ['id', 'workoutExerciseId', 'setIndex', 'weightKg', 'reps', 'completed', 'completedAt'],
+  cols: [
+    'id',
+    'workoutExerciseId',
+    'setIndex',
+    'source',
+    'weightKg',
+    'reps',
+    'completed',
+    'completedAt',
+  ],
   bools: ['completed'],
 };
 

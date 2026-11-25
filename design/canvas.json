@@ -2,6 +2,32 @@
   "v": 3,
   "attachments": {},
   "boards": {
+    "F1-Entrenamiento-Flexible.dc.html": {
+      "h": 6300,
+      "page": "flexibilidad",
+      "title": "F1 · Entrenamiento flexible: borrar, libre, modificar y aviso de descanso · aprobado 24 nov",
+      "w": 2300,
+      "x": 0,
+      "y": 0
+    },
+    "F1b-Prototipo-Flexible.dc.html": {
+      "h": 852,
+      "is_interactive": true,
+      "page": "flexibilidad",
+      "radius": 44,
+      "title": "F1b · Prototipo: + Serie, quitar, agregar ejercicio y Finalizar",
+      "w": 393,
+      "x": 2380,
+      "y": 0
+    },
+    "S6-Notas-Flexibilidad.dc.html": {
+      "h": 4300,
+      "page": "flexibilidad",
+      "title": "S6 · Notas de flexibilidad para el desarrollador (aprobado 24 nov)",
+      "w": 1100,
+      "x": 2380,
+      "y": 972
+    },
     "L5-Hoy-y-Navegacion.dc.html": {
       "h": 6300,
       "page": "ajustes-hoy",
@@ -464,7 +490,10 @@
     "L3-Marca-en-la-App.dc.html",
     "S5-Notas-Marca.dc.html",
     "L4-Marca-en-Hoy.dc.html",
-    "L5-Hoy-y-Navegacion.dc.html"
+    "L5-Hoy-y-Navegacion.dc.html",
+    "F1-Entrenamiento-Flexible.dc.html",
+    "F1b-Prototipo-Flexible.dc.html",
+    "S6-Notas-Flexibilidad.dc.html"
   ],
   "pages": [
     {
@@ -486,6 +515,10 @@
     {
       "id": "ajustes-hoy",
       "name": "Ajustes Hoy"
+    },
+    {
+      "id": "flexibilidad",
+      "name": "Flexibilidad"
     }
   ],
   "title": "Gym App Rediseño"

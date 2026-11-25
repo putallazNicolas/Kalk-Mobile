@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Prototipo · modificar sobre la marcha</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#050505}
+.num{font-family:'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}
+button{font-family:'Barlow',sans-serif;cursor:pointer;color:inherit}
+.scroll::-webkit-scrollbar{display:none}
+@keyframes rowin{0%{opacity:0;transform:translateY(-6px)}100%{opacity:1;transform:none}}
+.rowin{animation:rowin 220ms cubic-bezier(0.22,1,0.36,1)}
+</style>
+</helmet>
+<div style="width:393px;height:852px;box-sizing:border-box;padding-top:58px;background:#0B0B0C;color:#F4F4F2;font-family:'Barlow',sans-serif;position:relative;overflow:hidden">
+
+  <sc-if value="{{training}}" hint-placeholder-val="{{true}}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:0 16px 12px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#FF5B1F">ENTRENANDO · FUERZA 4 DÍAS</span>
+        <h1 class="num" style="margin:0;font-size:38px;line-height:0.95;font-weight:800;text-transform:uppercase">Piernas A</h1>
+      </div>
+      <button onClick="{{finish}}" style="height:44px;padding:0 16px;box-sizing:border-box;border-radius:12px;border:1.5px solid #FF5B1F;background:transparent;color:#FF5B1F;font-weight:700;font-size:15px">Finalizar</button>
+    </div>
+    <div style="margin:0 16px;padding:10px 14px;border-radius:12px;background:#141416;border:1px solid #2A2A2E;display:flex;justify-content:space-between;font-size:13px;color:#9A9A9F">
+      <span>Series <span class="num" style="font-size:20px;font-weight:700;color:#F4F4F2">{{doneSets}}</span><span class="num" style="font-size:20px;color:#7C7C82">/{{totalSets}}</span></span>
+      <span>Tocá el número de una serie pendiente para quitarla</span>
+    </div>
+
+    <div class="scroll" style="position:absolute;top:184px;left:0;right:0;bottom:0;overflow-y:auto;padding:0 16px 40px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px">
+      <div style="flex:none;height:56px;box-sizing:border-box;padding:0 14px;border-radius:14px;background:rgba(61,220,132,0.10);border:1px solid rgba(61,220,132,0.30);display:flex;align-items:center;gap:12px">
+        <span class="num" style="flex:1;font-size:22px;font-weight:700;color:#3DDC84;text-transform:uppercase">Sentadilla trasera</span>
+        <span style="font-size:13px;color:#9A9A9F">4/4 · mejor <span class="num" style="font-size:17px;font-weight:700;color:#F4F4F2">140 × 5</span></span>
+      </div>
+
+      <sc-for list="{{exercises}}" as="e" hint-placeholder-count="3">
+        <sc-if value="{{e.isDone}}" hint-placeholder-val="{{false}}">
+          <div style="flex:none;height:56px;box-sizing:border-box;padding:0 14px;border-radius:14px;background:rgba(61,220,132,0.10);border:1px solid rgba(61,220,132,0.30);display:flex;align-items:center;gap:10px">
+            <span class="num" style="flex:1;font-size:22px;font-weight:700;color:#3DDC84;text-transform:uppercase">{{e.name}}</span>
+            <span style="font-size:13px;color:#9A9A9F">{{e.doneLabel}}</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{e.isCur}}" hint-placeholder-val="{{true}}">
+          <section style="flex:none;padding:14px 8px 10px;border-radius:16px;background:#141416;border:1px solid rgba(255,91,31,0.45)">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:0 6px 10px">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:0.14em;color:#FF5B1F">EN CURSO
+                  <sc-if value="{{e.added}}" hint-placeholder-val="{{false}}"><span style="padding:1px 6px;border-radius:5px;box-shadow:inset 0 0 0 1px #5E5E64;color:#C9C9CC;font-size:10px;letter-spacing:0.1em">AGREGADO</span></sc-if>
+                </span>
+                <h2 class="num" style="margin:0;font-size:27px;line-height:1.02;font-weight:700;text-transform:uppercase">{{e.name}}</h2>
+              </div>
+              <span class="num" style="padding:3px 10px;border-radius:8px;background:#1C1C1F;border:1px solid #2A2A2E;font-size:21px;font-weight:700">{{e.planLabel}}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <sc-for list="{{e.rows}}" as="r" hint-placeholder-count="4">
+                <sc-if value="{{r.isDone}}" hint-placeholder-val="{{false}}">
+                  <div style="display:grid;grid-template-columns:24px minmax(0,1fr) 44px;gap:8px;align-items:center;height:52px;padding:0 8px;border-radius:10px;background:rgba(61,220,132,0.12)">
+                    <span class="num" style="font-size:20px;font-weight:700;color:#3DDC84">{{r.n}}</span>
+                    <span class="num" style="font-size:22px;font-weight:700">{{r.value}}</span>
+                    <span style="width:44px;height:44px;border-radius:10px;background:#3DDC84;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B0B0C" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{r.isFocus}}" hint-placeholder-val="{{false}}">
+                  <div class="{{r.anim}}" style="display:grid;grid-template-columns:24px minmax(0,1fr) 44px;gap:8px;align-items:center;height:56px;padding:0 8px;border-radius:10px;background:#1C1C1F;box-shadow:inset 0 0 0 1.5px #FF5B1F">
+                    <span class="num" style="font-size:20px;font-weight:700;color:#FF5B1F">{{r.n}}</span>
+                    <span style="display:flex;align-items:center;gap:6px"><span class="num" style="font-size:22px;font-weight:700;color:#5E5E64">{{r.value}}</span>
+                      <sc-if value="{{r.added}}" hint-placeholder-val="{{false}}"><span style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:#7C7C82">AGREGADA</span></sc-if></span>
+                    <button onClick="{{r.check}}" aria-label="{{r.checkLabel}}" style="width:44px;height:44px;box-sizing:border-box;border-radius:10px;border:1.5px solid #FF5B1F;background:rgba(255,91,31,0.10);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF5B1F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{r.isPending}}" hint-placeholder-val="{{true}}">
+                  <div class="{{r.anim}}" style="display:grid;grid-template-columns:44px minmax(0,1fr) 92px;gap:4px;align-items:center;height:52px;padding:0 0 0 0;border-radius:10px;background:{{r.bg}}">
+                    <button onClick="{{r.reveal}}" aria-label="{{r.revealLabel}}" style="width:44px;height:44px;border:0;background:transparent;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#7C7C82">{{r.n}}</button>
+                    <span style="display:flex;align-items:center;gap:6px"><span class="num" style="font-size:22px;font-weight:600;color:#5E5E64">{{r.value}}</span>
+                      <sc-if value="{{r.added}}" hint-placeholder-val="{{false}}"><span style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:#7C7C82">AGREGADA</span></sc-if></span>
+                    <sc-if value="{{r.revealed}}" hint-placeholder-val="{{false}}">
+                      <button onClick="{{r.remove}}" style="height:52px;border:0;border-radius:0 10px 10px 0;background:#FF4D6A;color:#0B0B0C;font-size:14px;font-weight:800">Quitar</button>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </sc-for>
+            </div>
+            <button onClick="{{addSet}}" style="margin:6px 8px 0;width:calc(100% - 16px);height:44px;box-sizing:border-box;border-radius:10px;border:1.5px dashed #3A3A3F;background:transparent;color:#C9C9CC;font-size:15px;font-weight:700">+ Serie</button>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{e.isLater}}" hint-placeholder-val="{{false}}">
+          <div style="flex:none;height:56px;box-sizing:border-box;padding:0 4px 0 14px;border-radius:14px;border:1px solid #1F1F22;display:flex;align-items:center;gap:8px">
+            <span class="num" style="flex:1;font-size:21px;font-weight:600;text-transform:uppercase;color:#7C7C82">{{e.name}}</span>
+            <sc-if value="{{e.added}}" hint-placeholder-val="{{false}}"><span style="padding:1px 6px;border-radius:5px;box-shadow:inset 0 0 0 1px #5E5E64;color:#C9C9CC;font-size:10px;font-weight:700;letter-spacing:0.1em">AGREGADO</span></sc-if>
+            <span class="num" style="font-size:19px;font-weight:600;color:#7C7C82">{{e.planLabel}}</span>
+            <button onClick="{{e.remove}}" aria-label="{{e.removeLabel}}" style="width:44px;height:44px;border:0;background:transparent;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C7C82" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+          </div>
+        </sc-if>
+      </sc-for>
+
+      <sc-if value="{{canAdd}}" hint-placeholder-val="{{true}}">
+        <button onClick="{{addExercise}}" style="flex:none;height:52px;box-sizing:border-box;border-radius:14px;border:1.5px dashed #3A3A3F;background:transparent;color:#C9C9CC;font-size:16px;font-weight:700">+ Agregar ejercicio (suma Zancadas)</button>
+      </sc-if>
+      <span style="flex:none;font-size:12px;line-height:1.45;color:#7C7C82;padding:4px 2px">En el prototipo, tocar el número reemplaza a deslizar, y la ✕ reemplaza a la pulsación larga.</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{summary}}" hint-placeholder-val="{{false}}">
+    <div style="padding:0 16px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#3DDC84">ENTRENAMIENTO TERMINADO</span>
+        <h1 class="num" style="margin:0;font-size:46px;line-height:0.92;font-weight:800;text-transform:uppercase">Piernas A</h1>
+        <span style="font-size:14px;color:#9A9A9F">Series hechas: <span class="num" style="font-size:17px;font-weight:700;color:#F4F4F2">{{doneSets}}</span></span>
+      </div>
+
+      <sc-if value="{{hasDiff}}" hint-placeholder-val="{{true}}">
+        <div style="padding:16px;border-radius:16px;background:#141416;box-shadow:inset 0 0 0 1.5px #3A3A3F;display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#FF5B1F">CAMBIASTE EL PLAN DE PIERNAS A</span>
+          <sc-for list="{{diff}}" as="d" hint-placeholder-count="2">
+            <div style="display:flex;align-items:center;gap:10px;font-size:14.5px;line-height:1.35">
+              <span class="num" style="width:22px;height:22px;border-radius:6px;background:#2A2A2E;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex:none">{{d.sign}}</span><span>{{d.text}}</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{undecided}}" hint-placeholder-val="{{true}}">
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+              <button onClick="{{applyRoutine}}" style="height:48px;border-radius:14px;border:1.5px solid #3A3A3F;background:transparent;color:#F4F4F2;font-size:16px;font-weight:700">Actualizar Piernas A</button>
+              <button onClick="{{keepRoutine}}" style="height:44px;border:0;background:transparent;color:#C9C9CC;font-size:15px;font-weight:600">Dejar la rutina como está</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{decidedMsg}}" hint-placeholder-val="{{false}}">
+            <span style="font-size:14px;color:#C9C9CC">{{decidedText}}</span>
+          </sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{noDiff}}" hint-placeholder-val="{{false}}">
+        <span style="font-size:14px;line-height:1.45;color:#9A9A9F">No cambiaste el plan: no hay nada que preguntar.</span>
+      </sc-if>
+
+      <button onClick="{{reset}}" style="height:56px;border-radius:14px;border:0;background:#FF5B1F;color:#0B0B0C;font-size:18px;font-weight:800">Guardar y volver (reinicia el prototipo)</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+function plan() {
+  return [
+    { id: 'pmr', name: 'Peso muerto rumano', kg: 105, reps: 8, plannedSets: 4, done: 2, added: false },
+    { id: 'prensa', name: 'Prensa 45°', kg: 190, reps: 12, plannedSets: 3, done: 0, added: false },
+    { id: 'camilla', name: 'Camilla femoral', kg: 45, reps: 10, plannedSets: 3, done: 0, added: false }
+  ];
+}
+function build() {
+  return plan().map(function (p) {
+    var sets = [];
+    for (var i = 0; i < p.plannedSets; i++) sets.push({ done: i < p.done, added: false, key: p.id + i });
+    return { id: p.id, name: p.name, kg: p.kg, reps: p.reps, plannedSets: p.plannedSets, added: false, sets: sets };
+  });
+}
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { ex: build(), summary: false, revealed: null, decision: null, seq: 0, fresh: null };
+  }
+  clone() { return this.state.ex.map(function (e) { return Object.assign({}, e, { sets: e.sets.map(function (s) { return Object.assign({}, s); }) }); }); }
+  curIndex(ex) { return ex.findIndex(function (e) { return e.sets.some(function (s) { return !s.done; }); }); }
+  check(ei, si) { var ex = this.clone(); ex[ei].sets[si].done = true; this.setState({ ex: ex, revealed: null }); }
+  addSet() {
+    var ex = this.clone(); var ci = this.curIndex(ex); if (ci < 0) return;
+    var k = 'n' + (this.state.seq + 1);
+    ex[ci].sets.push({ done: false, added: true, key: k });
+    this.setState({ ex: ex, seq: this.state.seq + 1, fresh: k, revealed: null });
+  }
+  removeSet(ei, si) {
+    var ex = this.clone(); ex[ei].sets.splice(si, 1);
+    if (ex[ei].sets.length === 0) ex.splice(ei, 1);
+    this.setState({ ex: ex, revealed: null });
+  }
+  removeEx(ei) { var ex = this.clone(); ex.splice(ei, 1); this.setState({ ex: ex }); }
+  addExercise() {
+    var ex = this.clone(); var ci = this.curIndex(ex);
+    var z = { id: 'zancadas', name: 'Zancadas', kg: 30, reps: 10, plannedSets: 0, added: true,
+      sets: [{ done: false, added: false, key: 'z0' }, { done: false, added: false, key: 'z1' }, { done: false, added: false, key: 'z2' }] };
+    ex.splice(ci < 0 ? ex.length : ci + 1, 0, z);
+    this.setState({ ex: ex });
+  }
+  diff() {
+    var ex = this.state.ex; var out = [];
+    plan().forEach(function (p) {
+      var cur = ex.find(function (e) { return e.id === p.id; });
+      if (!cur) out.push({ sign: '−', text: p.name });
+      else if (cur.sets.length !== p.plannedSets) out.push({ sign: cur.sets.length > p.plannedSets ? '+' : '−', text: p.name + ': ' + p.plannedSets + ' → ' + cur.sets.length + ' series' });
+    });
+    ex.forEach(function (e) { if (e.added) out.push({ sign: '+', text: e.name + ', ' + e.sets.length + ' × ' + e.reps }); });
+    return out;
+  }
+  renderVals() {
+    var s = this.state, self = this, ex = s.ex;
+    var ci = this.curIndex(ex);
+    var done = 0, total = 0;
+    var exercises = ex.map(function (e, ei) {
+      var dc = e.sets.filter(function (x) { return x.done; }).length;
+      done += dc + 0; total += e.sets.length;
+      var focus = ei === ci ? e.sets.findIndex(function (x) { return !x.done; }) : -1;
+      return {
+        name: e.name, added: e.added,
+        planLabel: e.sets.length + ' × ' + e.reps,
+        isDone: dc === e.sets.length, isCur: ei === ci, isLater: dc < e.sets.length && ei !== ci,
+        doneLabel: dc + '/' + e.sets.length,
+        remove: function () { self.removeEx(ei); }, removeLabel: 'Quitar ' + e.name,
+        rows: e.sets.map(function (x, si) {
+          var key = ei + '-' + si;
+          return {
+            n: si + 1, value: e.kg + ' × ' + e.reps, added: x.added,
+            isDone: x.done, isFocus: si === focus, isPending: !x.done && si !== focus,
+            revealed: s.revealed === key,
+            bg: s.revealed === key ? '#1C1C1F' : 'transparent',
+            anim: s.fresh === x.key ? 'rowin' : '',
+            check: function () { self.check(ei, si); }, checkLabel: 'Completar serie ' + (si + 1),
+            reveal: function () { self.setState({ revealed: s.revealed === key ? null : key }); },
+            revealLabel: 'Mostrar quitar serie ' + (si + 1),
+            remove: function () { self.removeSet(ei, si); }
+          };
+        })
+      };
+    });
+    var d = this.diff();
+    return {
+      training: !s.summary, summary: s.summary,
+      exercises: exercises, doneSets: done + 4, totalSets: total + 4,
+      canAdd: !ex.some(function (e) { return e.added; }),
+      addSet: function () { self.addSet(); },
+      addExercise: function () { self.addExercise(); },
+      finish: function () { self.setState({ summary: true, decision: null }); },
+      diff: d, hasDiff: d.length > 0, noDiff: d.length === 0,
+      undecided: s.decision === null, decidedMsg: s.decision !== null,
+      decidedText: s.decision === 'apply' ? 'Listo: Piernas A queda con estos cambios desde el próximo entreno.' : 'La rutina queda igual. Los cambios quedan solo en este entreno.',
+      applyRoutine: function () { self.setState({ decision: 'apply' }); },
+      keepRoutine: function () { self.setState({ decision: 'keep' }); },
+      reset: function () { self.setState({ ex: build(), summary: false, revealed: null, decision: null, fresh: null }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

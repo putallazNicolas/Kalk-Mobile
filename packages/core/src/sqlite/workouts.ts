@@ -1,11 +1,13 @@
 import {
   LOCAL_USER_ID,
   NotFoundError,
+  ValidationError,
   type ExerciseHistoryEntry,
   type ID,
   type Workout,
   type WorkoutDetail,
   type WorkoutExercise,
+  type WorkoutExerciseDetail,
   type WorkoutRepo,
   type WorkoutSet,
 } from '../contracts';
@@ -14,7 +16,10 @@ import {
   assertNonNegativeInt,
   assertNonNegativeNumber,
   assertPositiveInt,
-  assertSetRepsList,
+  assertSameIds,
+  assertWorkoutExerciseInput,
+  assertWorkoutName,
+  buildWorkoutExercise,
   compact,
 } from '../rules';
 import { newId } from '../utils';
@@ -34,11 +39,14 @@ import {
 
 /** Most recent first; ties resolved by creation order (later wins), like the in-memory repo. */
 const RECENT_FIRST = '"startedAt" DESC, rowid DESC';
+/** Soft-deleted workouts are tombstones: every read skips them. */
+const LIVE = '"deletedAt" IS NULL';
 
 export function createWorkoutRepo({ db, now }: SqliteContext): WorkoutRepo {
+  /** Live (not soft-deleted) workouts only: a tombstone is invisible to everything but restore. */
   const getWorkout = async (id: ID): Promise<Workout> => {
     const found = await selectById(db, WORKOUTS, id);
-    if (!found) throw new NotFoundError('Workout', id);
+    if (!found || found.deletedAt !== undefined) throw new NotFoundError('Workout', id);
     return found;
   };
   const getWorkoutExercise = async (id: ID): Promise<WorkoutExercise> => {
@@ -61,17 +69,47 @@ export function createWorkoutRepo({ db, now }: SqliteContext): WorkoutRepo {
       '"setIndex", rowid',
     );
 
+  const exercisesOf = (workoutId: ID) =>
+    selectAll(db, WORKOUT_EXERCISES, '"workoutId" = ?', [workoutId], '"order", rowid');
+
+  const withSets = async (e: WorkoutExercise): Promise<WorkoutExerciseDetail> => ({
+    ...e,
+    sets: await setsOf(e.id),
+  });
+
   const detail = async (workout: Workout): Promise<WorkoutDetail> => {
-    const exercises = await selectAll(
-      db,
-      WORKOUT_EXERCISES,
-      '"workoutId" = ?',
-      [workout.id],
-      '"order", rowid',
-    );
-    const withSets = [];
-    for (const e of exercises) withSets.push({ ...e, sets: await setsOf(e.id) });
-    return { ...workout, exercises: withSets };
+    const exercises = [];
+    for (const e of await exercisesOf(workout.id)) exercises.push(await withSets(e));
+    return { ...workout, exercises };
+  };
+
+  /** Rewrites `order` as 0..n-1 following the current order (only rows that changed). */
+  const renumber = async (workoutId: ID): Promise<void> => {
+    for (const [i, e] of (await exercisesOf(workoutId)).entries()) {
+      if (e.order !== i) {
+        await db.run('UPDATE workout_exercises SET "order" = ? WHERE "id" = ?', [i, e.id]);
+      }
+    }
+  };
+
+  const assertExercisesExist = async (inputs: { exerciseId: ID }[]): Promise<void> => {
+    for (const e of inputs) {
+      if (!(await exists(db, 'exercises', e.exerciseId))) {
+        throw new NotFoundError('Exercise', e.exerciseId);
+      }
+    }
+  };
+
+  const insertExercise = async (
+    workoutId: ID,
+    order: number,
+    input: Parameters<typeof buildWorkoutExercise>[2],
+    origin: Parameters<typeof buildWorkoutExercise>[3],
+  ): Promise<WorkoutExercise> => {
+    const built = buildWorkoutExercise(workoutId, order, input, origin);
+    await insertRow(db, WORKOUT_EXERCISES, built.exercise);
+    for (const set of built.sets) await insertRow(db, WORKOUT_SETS, set);
+    return built.exercise;
   };
 
   return {
@@ -82,55 +120,24 @@ export function createWorkoutRepo({ db, now }: SqliteContext): WorkoutRepo {
       if (input.dayId !== undefined && !(await exists(db, 'routine_days', input.dayId))) {
         throw new NotFoundError('RoutineDay', input.dayId);
       }
-      for (const e of input.exercises) {
-        if (!(await exists(db, 'exercises', e.exerciseId))) {
-          throw new NotFoundError('Exercise', e.exerciseId);
-        }
-        assertNonNegativeInt(e.plannedSets, 'plannedSets');
-        assertSetRepsList(e.plannedSetReps);
-        if (e.restSeconds !== undefined) assertNonNegativeInt(e.restSeconds, 'restSeconds');
-        for (const s of e.sets) {
-          if (s.weightKg !== undefined) assertNonNegativeNumber(s.weightKg, 'weightKg');
-          if (s.reps !== undefined) assertNonNegativeInt(s.reps, 'reps');
-        }
-      }
+      await assertExercisesExist(input.exercises);
+      input.exercises.forEach(assertWorkoutExerciseInput);
 
       const workout: Workout = compact({
         id: newId(),
+        kind: input.kind,
         routineId: input.routineId,
         dayId: input.dayId,
-        dayNameSnapshot: input.dayNameSnapshot,
+        name: input.name,
         startedAt: input.startedAt ?? now(),
+        planSnapshot: input.planSnapshot?.map((i) => ({ ...i })),
         ownerId: LOCAL_USER_ID,
         createdBy: LOCAL_USER_ID,
       });
       return inTransaction(db, async () => {
         await insertRow(db, WORKOUTS, workout);
         for (const [order, e] of input.exercises.entries()) {
-          const we: WorkoutExercise = compact({
-            id: newId(),
-            workoutId: workout.id,
-            exerciseId: e.exerciseId,
-            order,
-            plannedSets: e.plannedSets,
-            plannedReps: e.plannedReps,
-            plannedSetReps: [...e.plannedSetReps],
-            restSeconds: e.restSeconds,
-            notes: e.notes,
-            skipped: false,
-          });
-          await insertRow(db, WORKOUT_EXERCISES, we);
-          for (const [setIndex, s] of e.sets.entries()) {
-            const set: WorkoutSet = compact({
-              id: newId(),
-              workoutExerciseId: we.id,
-              setIndex,
-              weightKg: s.weightKg,
-              reps: s.reps,
-              completed: false,
-            });
-            await insertRow(db, WORKOUT_SETS, set);
-          }
+          await insertExercise(workout.id, order, e, e.origin ?? 'planned');
         }
         return detail(workout);
       });
@@ -138,17 +145,23 @@ export function createWorkoutRepo({ db, now }: SqliteContext): WorkoutRepo {
 
     async getById(id) {
       const found = await selectById(db, WORKOUTS, id);
-      return found ? detail(found) : null;
+      return found && found.deletedAt === undefined ? detail(found) : null;
     },
 
     async getInProgress() {
-      const [found] = await selectAll(db, WORKOUTS, '"finishedAt" IS NULL', [], RECENT_FIRST);
+      const [found] = await selectAll(
+        db,
+        WORKOUTS,
+        `"finishedAt" IS NULL AND ${LIVE}`,
+        [],
+        RECENT_FIRST,
+      );
       return found ?? null;
     },
 
     async listFinished(options) {
       const params: SqlParam[] = [];
-      let where = '"finishedAt" IS NOT NULL';
+      let where = `"finishedAt" IS NOT NULL AND ${LIVE}`;
       if (options?.since !== undefined) {
         where += ' AND "startedAt" >= ?';
         params.push(options.since);
@@ -164,7 +177,7 @@ export function createWorkoutRepo({ db, now }: SqliteContext): WorkoutRepo {
       const [found] = await selectAll(
         db,
         WORKOUTS,
-        '"finishedAt" IS NOT NULL AND "routineId" = ?',
+        `"finishedAt" IS NOT NULL AND ${LIVE} AND "routineId" = ?`,
         [routineId],
         RECENT_FIRST,
       );
@@ -172,15 +185,38 @@ export function createWorkoutRepo({ db, now }: SqliteContext): WorkoutRepo {
     },
 
     async update(id, patch) {
-      const next = applyPatch(await getWorkout(id), patch);
+      const current = await getWorkout(id);
+      const next = applyPatch(
+        current,
+        patch.name === undefined ? patch : { ...patch, name: assertWorkoutName(patch.name) },
+      );
       await updateRow(db, WORKOUTS, next);
       return next;
     },
 
-    async delete(id) {
-      await getWorkout(id);
+    async discard(id) {
+      const workout = await getWorkout(id);
+      if (workout.finishedAt !== undefined) {
+        throw new ValidationError('only a workout in progress can be discarded (use softDelete)');
+      }
       // Exercises and sets go with it through ON DELETE CASCADE.
       await db.run('DELETE FROM workouts WHERE "id" = ?', [id]);
+    },
+
+    async softDelete(id) {
+      const workout = await getWorkout(id);
+      if (workout.finishedAt === undefined) {
+        throw new ValidationError('a workout in progress cannot be deleted (use discard)');
+      }
+      await updateRow(db, WORKOUTS, { ...workout, deletedAt: now() });
+    },
+
+    async restore(id) {
+      const workout = await selectById(db, WORKOUTS, id);
+      if (!workout) throw new NotFoundError('Workout', id);
+      const restored = { ...workout };
+      delete restored.deletedAt;
+      await updateRow(db, WORKOUTS, restored);
     },
 
     async updateWorkoutExercise(id, patch) {
@@ -188,6 +224,51 @@ export function createWorkoutRepo({ db, now }: SqliteContext): WorkoutRepo {
       if (patch.skipped !== undefined) we.skipped = patch.skipped;
       await updateRow(db, WORKOUT_EXERCISES, we);
       return we;
+    },
+
+    async addWorkoutExercises(workoutId, inputs, options) {
+      await getWorkout(workoutId);
+      await assertExercisesExist(inputs);
+      inputs.forEach(assertWorkoutExerciseInput);
+      return inTransaction(db, async () => {
+        const count = (await exercisesOf(workoutId)).length;
+        const at =
+          options?.afterOrder === undefined
+            ? count
+            : Math.min(Math.max(options.afterOrder + 1, 0), count);
+        await db.run(
+          'UPDATE workout_exercises SET "order" = "order" + ? WHERE "workoutId" = ? AND "order" >= ?',
+          [inputs.length, workoutId, at],
+        );
+        const created: WorkoutExerciseDetail[] = [];
+        for (const [i, input] of inputs.entries()) {
+          created.push(await withSets(await insertExercise(workoutId, at + i, input, 'added')));
+        }
+        return created;
+      });
+    },
+
+    async removeWorkoutExercise(id) {
+      const we = await getWorkoutExercise(id);
+      await inTransaction(db, async () => {
+        // Its sets go with it through ON DELETE CASCADE.
+        await db.run('DELETE FROM workout_exercises WHERE "id" = ?', [id]);
+        await renumber(we.workoutId);
+      });
+    },
+
+    async reorderWorkoutExercises(workoutId, orderedIds) {
+      await getWorkout(workoutId);
+      assertSameIds(
+        (await exercisesOf(workoutId)).map((e) => e.id),
+        orderedIds,
+        'orderedIds',
+      );
+      await inTransaction(db, async () => {
+        for (const [order, id] of orderedIds.entries()) {
+          await db.run('UPDATE workout_exercises SET "order" = ? WHERE "id" = ?', [order, id]);
+        }
+      });
     },
 
     async addSet(workoutExerciseId) {
@@ -199,6 +280,7 @@ export function createWorkoutRepo({ db, now }: SqliteContext): WorkoutRepo {
           id: newId(),
           workoutExerciseId,
           setIndex: existing.length,
+          source: 'added',
           weightKg: last?.weightKg,
           completed: false,
         });
@@ -236,7 +318,7 @@ export function createWorkoutRepo({ db, now }: SqliteContext): WorkoutRepo {
       const limit =
         options?.limit === undefined ? undefined : assertPositiveInt(options.limit, 'limit');
       const params: SqlParam[] = [exerciseId];
-      let where = 'we."exerciseId" = ?';
+      let where = 'we."exerciseId" = ? AND w."deletedAt" IS NULL';
       if (!options?.includeInProgress) where += ' AND w."finishedAt" IS NOT NULL';
       if (options?.excludeWorkoutId !== undefined) {
         where += ' AND w."id" <> ?';

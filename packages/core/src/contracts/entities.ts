@@ -141,24 +141,73 @@ export interface PlannedExercise {
   notes?: string;
 }
 
+export const WORKOUT_KINDS = ['routine', 'free'] as const;
+/** "routine": started from a routine day. "free": started empty (design/S6, "Entreno libre"). */
+export type WorkoutKind = (typeof WORKOUT_KINDS)[number];
+
+/** Name a free workout has until it is finished (then it gets "Libre · Piernas"). */
+export const FREE_WORKOUT_DEFAULT_NAME = 'Entreno libre';
+/** Workout names: trimmed, non-empty, at most this long. */
+export const WORKOUT_NAME_MAX_LENGTH = 40;
+
+/** One planned exercise as it was when a routine workout started (design/S6 §3). */
+export interface PlanSnapshotItem {
+  plannedExerciseId: ID;
+  exerciseId: ID;
+  /** Position in the day. */
+  order: number;
+  /** Number of planned sets. */
+  sets: number;
+}
+
+export const PLAN_CHANGE_DECISIONS = ['applied', 'kept'] as const;
+/** What the user chose on the "Actualizar <día>" card of the summary. */
+export type PlanChangeDecision = (typeof PLAN_CHANGE_DECISIONS)[number];
+
 /** A training session. In progress while `finishedAt` is undefined. */
 export interface Workout extends Owned {
   id: ID;
+  kind: WorkoutKind;
+  /** Only for kind "routine" (undefined for free workouts). */
   routineId?: ID;
   dayId?: ID;
-  /** Day name at the time the workout started (survives renames/deletes). */
-  dayNameSnapshot: string;
+  /**
+   * Display name. Routine: the day name when it started (survives renames/deletes; was
+   * `dayNameSnapshot` before contracts v3). Free: FREE_WORKOUT_DEFAULT_NAME while in progress,
+   * "Libre · Piernas" after finishing; the user can rename it.
+   */
+  name: string;
   startedAt: ISODateString;
   finishedAt?: ISODateString;
   notes?: string;
+  /**
+   * Routine workouts: the day's plan when it started, to compute the summary diff even if the
+   * routine changes meanwhile. Undefined for free workouts and for workouts started before v3.
+   */
+  planSnapshot?: PlanSnapshotItem[];
+  /** Set once the user answered the "Actualizar <día>" card (never asked again). */
+  planChangeDecision?: PlanChangeDecision;
+  /**
+   * Soft delete (design/S6 "Deshacer"). Deleted workouts are kept as tombstones (V2 sync) and
+   * every read filters them out: they never count for history, records or stats.
+   */
+  deletedAt?: ISODateString;
 }
+
+export const WORKOUT_ITEM_ORIGINS = ['planned', 'added'] as const;
+/** "planned": came from the routine when the workout started. "added": added during it. */
+export type WorkoutItemOrigin = (typeof WORKOUT_ITEM_ORIGINS)[number];
 
 export interface WorkoutExercise {
   id: ID;
   workoutId: ID;
   exerciseId: ID;
-  /** 0-based position inside the workout. */
+  /** 0-based position inside the workout. Contiguous; editable during the workout. */
   order: number;
+  /** "added" shows the AGREGADO tag. Free workouts: every exercise is "added". */
+  origin: WorkoutItemOrigin;
+  /** The PlannedExercise it came from (origin "planned", v3+). Undefined for older workouts. */
+  plannedExerciseId?: ID;
   /** Snapshot: number of planned sets when the workout started. */
   plannedSets: number;
   /** Snapshot: summary label of the plan ("8-10" or "5 · 3 · 1"), for display. */
@@ -181,6 +230,8 @@ export interface WorkoutSet {
   workoutExerciseId: ID;
   /** 0-based position inside the workout exercise. Contiguous after add/remove. */
   setIndex: number;
+  /** "added": created with "+ Serie" during the workout (shows AGREGADA while pending). */
+  source: WorkoutItemOrigin;
   weightKg?: number;
   reps?: number;
   completed: boolean;
@@ -189,13 +240,22 @@ export interface WorkoutSet {
 
 export type WeightUnit = 'kg' | 'lb';
 
+export const REST_NOTIFICATION_STATES = ['unasked', 'on', 'off'] as const;
+/**
+ * Local notification when a rest ends (design/S6 §6). "unasked": the first rest shows the prompt
+ * card. The iOS permission itself is read at runtime and never stored.
+ */
+export type RestNotificationState = (typeof REST_NOTIFICATION_STATES)[number];
+
 export interface Settings {
   unit: WeightUnit;
   /** Show the non-blocking rest timer after completing a set (when restSeconds is set). */
   restTimerEnabled: boolean;
+  restNotifications: RestNotificationState;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   unit: 'kg',
   restTimerEnabled: true,
+  restNotifications: 'unasked',
 };

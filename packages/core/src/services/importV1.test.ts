@@ -90,7 +90,7 @@ describe.each(BACKENDS)('importing a v1 file on %s', (_name, build) => {
     },
   });
 
-  it('converts it to v2 data with the same rules as the SQLite migration', async () => {
+  it('converts it to current data with the same rules as the SQLite migration', async () => {
     const repos = await build();
     const svc = createDomainServices(repos, { now: clock });
     const file = v1File();
@@ -126,8 +126,13 @@ describe.each(BACKENDS)('importing a v1 file on %s', (_name, build) => {
       plannedSetReps: ['8-10', '8-10', '8-10'],
     });
     expect(w.exercises[0]!.sets[0]).toMatchObject({ weightKg: 20, reps: 9, completed: true });
+    // ...and on to v3: a routine workout named after the day, everything "planned"
+    expect(w).toMatchObject({ kind: 'routine', name: 'D' });
+    expect(w.exercises[0]).toMatchObject({ origin: 'planned' });
+    expect(w.exercises[0]!.sets[0]).toMatchObject({ source: 'planned' });
+    expect((await repos.settings.get()).restNotifications).toBe('unasked');
 
-    // the re-export is a valid v2 file that round-trips losslessly
+    // the re-export is a valid current file that round-trips losslessly
     const exported = viaJson(await svc.exportAllData());
     expect(exported.version).toBe(EXPORT_VERSION);
     const target = await build();

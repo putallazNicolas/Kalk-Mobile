@@ -72,6 +72,20 @@ async function convertWorkoutExercises(db: SqlDriver): Promise<void> {
 }
 
 /**
+ * v3 (contracts "Flexibilidad"): free workouts, soft delete, plan snapshot, added exercises.
+ *
+ * Design (only ADD / RENAME COLUMN, no table rebuilds, so existing rows are never rewritten):
+ * - `workouts`: RENAME `dayNameSnapshot` to `name` (the values stay exactly the same), ADD `kind`
+ *   (existing rows become 'routine'), `planSnapshot` (JSON, NULL for old workouts),
+ *   `planChangeDecision` and `deletedAt` (NULL: nothing is deleted or decided).
+ * - `workout_exercises`: ADD `origin` (existing rows become 'planned') and `plannedExerciseId`
+ *   (NULL: old workouts have no link to the plan).
+ * - `workout_sets`: ADD `source` (existing rows become 'planned').
+ * - `settings` is a key/value table: `restNotifications` falls back to its default 'unasked'.
+ * Runs in the same transaction as the `user_version` bump.
+ */
+
+/**
  * Schema history. Never edit an applied migration: append a new one.
  * Conventions: booleans are INTEGER 0/1, optional values are NULL, timestamps are ISO TEXT,
  * weights are REAL kilograms. Column names match entity property names (quoted).
@@ -189,6 +203,19 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE planned_exercises_v2 RENAME TO planned_exercises`,
       `CREATE INDEX idx_planned_day ON planned_exercises("dayId", "order")`,
       `CREATE INDEX idx_planned_exercise ON planned_exercises("exerciseId")`,
+    ],
+  },
+  {
+    version: 3,
+    up: [
+      `ALTER TABLE workouts RENAME COLUMN "dayNameSnapshot" TO "name"`,
+      `ALTER TABLE workouts ADD COLUMN "kind" TEXT NOT NULL DEFAULT 'routine'`,
+      `ALTER TABLE workouts ADD COLUMN "planSnapshot" TEXT`,
+      `ALTER TABLE workouts ADD COLUMN "planChangeDecision" TEXT`,
+      `ALTER TABLE workouts ADD COLUMN "deletedAt" TEXT`,
+      `ALTER TABLE workout_exercises ADD COLUMN "origin" TEXT NOT NULL DEFAULT 'planned'`,
+      `ALTER TABLE workout_exercises ADD COLUMN "plannedExerciseId" TEXT`,
+      `ALTER TABLE workout_sets ADD COLUMN "source" TEXT NOT NULL DEFAULT 'planned'`,
     ],
   },
 ];

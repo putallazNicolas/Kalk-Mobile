@@ -238,7 +238,7 @@ export default function SummaryScreen() {
             Entrenamiento terminado
           </Text>
           <Text variant="displayXL" accessibilityRole="header">
-            {data.workout.dayNameSnapshot}
+            {data.workout.name}
           </Text>
           <Text variant="bodyS" color="textSecondary">
             {dateText.charAt(0).toUpperCase() + dateText.slice(1)} · {timeRange}

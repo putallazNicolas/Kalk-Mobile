@@ -76,7 +76,7 @@ export default function ProgresoScreen() {
         if (e.sets.some((s) => s.completed)) withIds.add(e.exerciseId);
     const withHistory = exercises.filter((e) => withIds.has(e.id));
     const others = exercises.filter((e) => !withIds.has(e.id) && !e.archived);
-    const dayNames = new Map(finished.map((w) => [w.id, w.dayNameSnapshot]));
+    const dayNames = new Map(finished.map((w) => [w.id, w.name]));
     return {
       ordered: [...withHistory, ...others],
       withHistoryCount: withHistory.length,
