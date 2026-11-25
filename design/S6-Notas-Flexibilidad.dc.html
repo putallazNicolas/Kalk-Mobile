@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Notas de flexibilidad para el desarrollador</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.num{font-family:'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}
+pre,code{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+code{color:#F4F4F2;font-size:12.5px}
+</style>
+</helmet>
+<div style="width:1100px;height:4300px;box-sizing:border-box;padding:48px;background:#0B0B0C;color:#F4F4F2;font-family:'Barlow',sans-serif;display:flex;flex-direction:column;gap:32px">
+
+  <header style="display:flex;flex-direction:column;gap:6px">
+    <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#FF5B1F">S6 · FLEXIBILIDAD EN EL ENTRENAMIENTO · PARA EL DESARROLLADOR · APROBADO 24 NOV</span>
+    <h1 class="num" style="margin:0;font-size:56px;line-height:0.92;font-weight:800;text-transform:uppercase">Notas de flexibilidad</h1>
+    <span style="font-size:15px;color:#9A9A9F">Pantallas en F1, prototipo del punto 3 en F1b. Tokens de S1, componentes de S2, hojas y toasts de S4, header de navegación A de S5.</span>
+  </header>
+
+  <div style="padding:16px 18px;border-radius:14px;background:#141416;box-shadow:inset 0 0 0 1.5px #F4F4F2;font-size:14px;line-height:1.5;color:#C9C9CC"><span style="display:block;font-size:12px;font-weight:700;letter-spacing:0.14em;color:#FF5B1F;margin-bottom:6px">APROBADO POR NICOLÁS · 24 NOV 2026</span><b style="color:#F4F4F2">1b · 2b · 3B · 4 después del actual · 5 primer descanso.</b> Es lo que se implementa. La variante A del punto 3 (3D en F1) queda descartada: el Resumen ofrece actualizar la rutina con la card de 3E. La referencia visual es F1 y el comportamiento del punto 3 se puede probar en F1b.</div>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#9A9A9F">1 · DECISIONES (ELEGIDAS EL 24 NOV)</span>
+    <div style="border-radius:14px;border:1px solid #2A2A2E;overflow:hidden;font-size:13.5px;line-height:1.45">
+      <div style="display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:16px;padding:10px 16px;background:#1C1C1F;font-size:11px;font-weight:700;letter-spacing:0.12em;color:#9A9A9F"><span>DECISIÓN</span><span>OPCIONES</span><span>ELEGIDO</span></div>
+      <div style="display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>Confirmar un borrado</b><span style="color:#C9C9CC">(a) Solo diálogo · (b) diálogo con consecuencias + «Deshacer» 5 s · (c) solo «Deshacer»</span><span><b style="color:#FF5B1F">(b)</b> Un diálogo que dice qué se pierde (y qué pasa con los récords) y un «Deshacer» para el toque sin querer.</span></div>
+      <div style="display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>Nombre del entreno libre</b><span style="color:#C9C9CC">(a) Siempre «Entreno libre» · (b) automático por grupo muscular: «Libre · Piernas»</span><span><b style="color:#FF5B1F">(b)</b> Editable en el Resumen. El historial se lee mejor.</span></div>
+      <div style="display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>Cambios y la rutina</b><span style="color:#C9C9CC">Variante A: quedan solo en el entreno · Variante B: el Resumen ofrece «Actualizar Piernas A»</span><span><b style="color:#FF5B1F">B</b>, en el Resumen y sin modal. Si no elegís, queda solo en el entreno.</span></div>
+      <div style="display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>Dónde entra un ejercicio agregado</b><span style="color:#C9C9CC">Después del que estás haciendo · al final</span><span><b style="color:#FF5B1F">Después del actual:</b> si lo agregás, es porque lo vas a hacer ahora.</span></div>
+      <div style="display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>Cuándo pedir el permiso</b><span style="color:#C9C9CC">Al abrir la app · al terminar el primer entreno · en el primer descanso</span><span><b style="color:#FF5B1F">En el primer descanso,</b> con una tarjeta previa. Es cuando el aviso se entiende solo.</span></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#9A9A9F">2 · COMPONENTES NUEVOS O QUE CAMBIAN</span>
+    <div style="border-radius:14px;border:1px solid #2A2A2E;overflow:hidden;font-size:13.5px;line-height:1.45">
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:10px 16px;background:#1C1C1F;font-size:11px;font-weight:700;letter-spacing:0.12em;color:#9A9A9F"><span>COMPONENTE</span><span>ESTADO</span><span>DÓNDE (F1)</span><span>QUÉ HACE</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>ActionSheet</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">1A, 3A</span><span style="color:#C9C9CC">Hoja inferior (la <code>Sheet</code> de S4) con un label arriba y filas de 52 pt con ícono. La acción destructiva va última, en <code>danger</code> y con un filete arriba. Puede llevar un detalle a la derecha («6 series») y una nota abajo.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>WorkoutMenu (⋯ arriba)</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">1A</span><span style="color:#C9C9CC">Botón de 44 pt con borde <code>borderStrong</code>, a la izquierda de «Finalizar». Abre: Agregar ejercicio · Reordenar ejercicios · Descartar entrenamiento.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>ExerciseMenu</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">3A</span><span style="color:#C9C9CC">⋯ en la card en curso (al lado del chip del plan) y pulsación larga (<code>onLongPress</code>, 400 ms) en las filas de los demás ejercicios. Opciones: Agregar serie · Reemplazar ejercicio · Mover arriba · Mover abajo · Quitar ejercicio.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>SwipeToDelete</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">1D, 3B</span><span style="color:#C9C9CC">Se desliza a la izquierda y aparece una acción roja de 88–96 pt («Quitar» en series, «Eliminar» en el historial). Deslizar hasta el fondo ejecuta. Se usa en <code>SetRow</code> (pendiente o hecha) y en la fila del historial de Hoy.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>AddSetButton</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">2D, 3B</span><span style="color:#C9C9CC">«+ Serie», de 44 pt y borde punteado de 1,5 en <code>borderStrong</code>, al pie de la card en curso. La serie nueva usa como placeholder los kg y las reps de la última. Entra con <code>FadeIn</code> + <code>LinearTransition</code>.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>AddExerciseButton</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">2C, 2D, 3B</span><span style="color:#C9C9CC">Punteado, de 52 pt, al final de la lista. Cuando el entreno está vacío es el botón primario naranja de 56 pt. Abre Elegir ejercicio (P08) con selección múltiple.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>Tag AGREGADO / LIBRE</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">1D, 3B, 3C</span><span style="color:#C9C9CC">Mismo estilo que el tag «PROPIO» de S4, pero en gris: contorno de 1 px en <code>textDisabled</code>, texto <code>#C9C9CC</code> de 10 pt. No es naranja: es información, no una acción.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>EmptyWorkout</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">2C</span><span style="color:#C9C9CC">Card punteada con la barra sin discos, «Sumá el primer ejercicio» y el botón primario. Mientras no haya series, «Finalizar» va con borde gris.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>ConfirmDialog</b><span style="color:#FF5B1F">Cambia</span><span style="color:#9A9A9F">1B, 1C, 1E</span><span style="color:#C9C9CC">El diálogo de S2 suma un lugar opcional para el impacto: un recuadro en <code>recordMuted</code> con el récord al que vuelve cada ejercicio.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>UndoToast</b><span style="color:#FF5B1F">Cambia</span><span style="color:#9A9A9F">1F</span><span style="color:#C9C9CC">El <code>Toast</code> de S4 con borde <code>#2F2F33</code>, ícono de tacho y la acción «Deshacer» en <code>accent</code>. Dura 5 s. También aparece al quitar una serie o un ejercicio sin series hechas.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>ReorderSheet</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">3C</span><span style="color:#C9C9CC">Hoja con <code>formSheet</code> y la lista de ejercicios con ↑/↓, como en Armar día (S4). Los ejercicios terminados quedan arriba y no se mueven. Arriba a la derecha, «Listo».</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>PlanChangesCard</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">3E</span><span style="color:#C9C9CC">Variante B (elegida). Card en el Resumen con la lista de cambios (+ / −) y dos botones: «Actualizar &lt;día&gt;» (secundario) y «Dejar la rutina como está» (ghost). Después de elegir, muestra una línea de confirmación. No aparece si no hubo cambios de estructura.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>FreeWorkoutRow</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">2A, 2B</span><span style="color:#C9C9CC">Fila de 60 pt debajo de la card del día en Hoy: «Entreno libre» y su explicación. En Hoy vacía es un botón secundario debajo de «Armá tu primera rutina».</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>RestNotificationPrompt</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">4A</span><span style="color:#C9C9CC">Tarjeta flotante encima del temporizador, solo en el primer descanso. Lleva «Activar aviso» (primario) y «Ahora no». No bloquea el temporizador y lo de atrás queda oscurecido al 35 %.</span></div>
+      <div style="display:grid;grid-template-columns:210px 90px 120px minmax(0,1fr);gap:16px;padding:11px 16px;border-top:1px solid #1F1F22;background:#141416"><b>SettingRow</b><span style="color:#3DDC84">Nuevo</span><span style="color:#9A9A9F">4C</span><span style="color:#C9C9CC">Fila de Perfil con título, explicación y control a la derecha (el <code>Switch</code> de S2). Si el permiso está negado, el control se reemplaza por «Abrir Ajustes».</span></div>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;line-height:1.5;color:#C9C9CC">
+      <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#9A9A9F">3 · QUÉ DATOS NUEVOS IMPLICA CADA COSA</span>
+      <span style="font-size:13px;color:#9A9A9F">Referencia: <code>packages/core/src/contracts/entities.ts</code>. Los contratos los cambia el orquestador: esta es la lista para pedírselo.</span>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">Entreno libre</b><br>• En <code>Workout</code>, <code>routineId</code> y <code>dayId</code> pasan a opcionales (<code>null</code> = libre).<br>• <code>kind: 'routine' | 'free'</code> (se puede derivar, pero conviene explícito para filtrar).<br>• <code>name: string</code>: en rutina, el nombre del día; en libre, se calcula al finalizar con los grupos musculares (hasta dos) y se puede editar.<br>• Un entreno libre <b style="color:#F4F4F2">no avanza</b> el día sugerido de la rutina.</div>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">Modificar sobre la marcha</b><br>• <code>WorkoutExercise.order</code> pasa a ser editable.<br>• <code>WorkoutExercise.plannedExerciseId?: ID | null</code>: <code>null</code> = agregado durante el entreno (tag AGREGADO).<br>• <code>WorkoutSet.source: 'planned' | 'added'</code>. Quitar una serie o un ejercicio borra la fila.<br>• <code>Workout.planSnapshot</code>: al empezar, se copia la lista de <code>{ plannedExerciseId, exerciseId, order, sets }</code>. Con eso se calcula el diff del Resumen aunque la rutina cambie mientras tanto. El diff no se guarda: se calcula.<br>• <code>Workout.planChangeDecision?: 'applied' | 'kept'</code>, para no volver a preguntar.</div>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">Borrar con «Deshacer»</b><br>• <code>Workout.deletedAt?: ISODate</code>: es un borrado suave. Todas las consultas filtran <code>deletedAt == null</code>.<br>• Se borra en serio a los 5 s o, si la app se cerró antes, al próximo arranque.<br>• Descartar un entreno <b style="color:#F4F4F2">en curso</b> lo borra directo, sin <code>deletedAt</code>: nunca llegó al historial.</div>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">Aviso de descanso</b><br>• En <code>Settings</code>: <code>restNotifications: 'unasked' | 'on' | 'off'</code>.<br>• El permiso de iOS se lee en el momento con <code>getPermissionsAsync()</code>: no se guarda.<br>• El id de la notificación programada vive solo en memoria, mientras dura el descanso.</div>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">Migración</b><br>Los entrenos existentes quedan con <code>kind = 'routine'</code> y su <code>planSnapshot</code> armado desde sus propios <code>WorkoutExercise</code>, sin diff hacia atrás. Las series existentes quedan con <code>source = 'planned'</code>.</div>
+    </div>
+    <pre style="margin:0;padding:18px;border-radius:14px;background:#141416;border:1px solid #2A2A2E;font-size:12px;line-height:1.6;color:#E4E4E2;white-space:pre">// Boceto orientativo, a decidir por el orquestador
+
+interface Workout {
+  id: ID;
+  kind: 'routine' | 'free';          // nuevo
+  routineId?: ID | null;            // null = libre
+  dayId?: ID | null;
+  name: string;                     // nuevo
+  startedAt: ISODateString;
+  finishedAt?: ISODateString;
+  planSnapshot?: PlanSnapshotItem[];// nuevo
+  planChangeDecision?: 'applied' | 'kept'; // card del Resumen
+  deletedAt?: ISODateString;        // nuevo (Deshacer)
+}
+
+interface PlanSnapshotItem {
+  plannedExerciseId: ID;
+  exerciseId: ID;
+  order: number;
+  sets: number;
+}
+
+interface WorkoutExercise {
+  // ...lo actual
+  order: number;                    // ahora editable
+  plannedExerciseId?: ID | null;    // null = agregado
+}
+
+interface WorkoutSet {
+  // ...lo actual
+  source: 'planned' | 'added';      // nuevo
+}
+
+interface Settings {
+  // ...lo actual
+  restNotifications: 'unasked' | 'on' | 'off';
+}
+
+// Repos nuevos o que cambian:
+// workouts.discard(id)        borra un entreno en curso
+// workouts.softDelete(id)     pone deletedAt
+// workouts.restore(id)        lo saca (Deshacer)
+// workouts.purgeDeleted()     al arrancar la app
+// workouts.rename(id, name)
+// routines.applyChanges(workoutId)  variante B
+// records.previousBest(exerciseId, excludingWorkoutId)</pre>
+  </section>
+
+  <section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;line-height:1.5;color:#C9C9CC">
+      <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#9A9A9F">4 · BORRAR Y LOS RÉCORDS</span>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">Recomiendo que los PRs se calculen, no que se guarden.</b> Una serie es PR si su e1RM supera el mejor e1RM de todas las series anteriores del mismo ejercicio, en entrenos no borrados. Así, al borrar un entreno, los récords vuelven solos al anterior, y el gráfico de Progreso y el titular de Hoy («PR reciente») se corrigen sin hacer nada.</div>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">Si hoy hay un <code>isPR</code> guardado</b> (o una tabla de récords): al borrar, recalcular por cada <code>exerciseId</code> del entreno borrado las series de los entrenos posteriores a su fecha. Una serie que antes no era PR puede pasar a serlo.</div>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">El texto del diálogo (1E):</b> antes de mostrarlo, por cada ejercicio que tuvo PR en ese entreno se busca <code>previousBest(exerciseId, excluyendo ese entreno)</code>. Con uno: «Sentadilla trasera vuelve a su récord anterior: 135 × 5 (e1RM 157,5 kg)». Con varios: «Tenía 3 récords: vuelven a los anteriores». Sin récords, el recuadro no aparece.</div>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">Quitar series hechas en el momento:</b> el PR de esa serie se va con ella. Si quitás una serie con PR, la siguiente que lo supere pasa a ser el PR del día.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;line-height:1.5;color:#C9C9CC">
+      <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#9A9A9F">5 · «ACTUALIZAR &lt;DÍA&gt;» EN EL RESUMEN</span>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E">Se compara el entreno con <code>planSnapshot</code>. Solo cuentan los cambios de estructura:<br>• <b style="color:#F4F4F2">Cambió la cantidad de series:</b> si el ejercicio va con <code>repsMode: 'same'</code>, se ajusta la cantidad y se copian las reps. Si va con <code>'perSet'</code>, las series nuevas copian la última y las que se quitan salen del final.<br>• <b style="color:#F4F4F2">Ejercicio agregado:</b> se crea un <code>PlannedExercise</code> en esa posición, con tantas series como se hicieron y las reps más repetidas.<br>• <b style="color:#F4F4F2">Ejercicio quitado:</b> se borra su <code>PlannedExercise</code>.<br>• <b style="color:#F4F4F2">Orden:</b> se aplica el orden del entreno.<br>Todo en una sola transacción. Los kilos, las reps y el descanso no se tocan.</div>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E"><b style="color:#F4F4F2">Caso borde:</b> si la rutina se editó mientras entrenabas (el snapshot no coincide con la rutina actual), la card no ofrece actualizar. Muestra: «La rutina cambió mientras entrenabas. Editala en Rutinas».</div>
+      <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#9A9A9F;margin-top:8px">6 · AVISO DE DESCANSO (EXPO-NOTIFICATIONS)</span>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E">• <code>requestPermissionsAsync()</code> solo al tocar «Activar aviso» (4A) o al prender el switch de Perfil. Con «Ahora no», <code>restNotifications = 'off'</code> y no se pregunta más en Entrenando.<br>• Al arrancar un descanso con el aviso activo, se programa una notificación local con <code>scheduleNotificationAsync</code> (trigger de intervalo, en los segundos que faltan, sin repetir) y se guarda el id.<br>• Con +15 s se cancela y se reprograma. Se cancela (<code>cancelScheduledNotificationAsync</code>) si se cierra el temporizador, se completa otra serie, o se finaliza o descarta el entreno.<br>• Con la app en primer plano, <code>setNotificationHandler</code> no muestra banner, no la deja en la lista y no suena: ya están el haptic y «A LA BARRA».<br>• Con el permiso negado, Perfil muestra «Abrir Ajustes» (<code>Linking.openSettings()</code>).</div>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#9A9A9F">7 · TEXTOS DE LA NOTIFICACIÓN</span>
+      <div style="border-radius:14px;border:1px solid #2A2A2E;overflow:hidden;font-size:13.5px;line-height:1.45">
+        <div style="display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:14px;padding:10px 14px;background:#1C1C1F;font-size:11px;font-weight:700;letter-spacing:0.12em;color:#9A9A9F"><span>CASO</span><span>CASTELLANO</span><span>ENGLISH</span></div>
+        <div style="display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:14px;padding:10px 14px;border-top:1px solid #1F1F22;background:#141416"><b>Título</b><span>Descanso terminado</span><span>Rest is over</span></div>
+        <div style="display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:14px;padding:10px 14px;border-top:1px solid #1F1F22;background:#141416"><b>Mismo ejercicio</b><span>A la barra: serie {n} de {total} · {ejercicio}</span><span>Back to the bar: set {n} of {total} · {exercise}</span></div>
+        <div style="display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:14px;padding:10px 14px;border-top:1px solid #1F1F22;background:#141416"><b>Ejercicio nuevo</b><span>A la barra: {ejercicio}, serie 1 de {total}</span><span>Back to the bar: {exercise}, set 1 of {total}</span></div>
+        <div style="display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:14px;padding:10px 14px;border-top:1px solid #1F1F22;background:#141416"><b>Entreno libre, sin serie siguiente</b><span>A la barra: {ejercicio}</span><span>Back to the bar: {exercise}</span></div>
+      </div>
+      <span style="font-size:12.5px;line-height:1.45;color:#7C7C82">Sin signos de exclamación ni emojis. El nombre del ejercicio va como está en la app. Sonido: el del sistema (respeta el modo silencio).</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#9A9A9F">8 · QUÉ FUNCIONA EN EXPO GO</span>
+      <div style="border-radius:14px;border:1px solid #2A2A2E;overflow:hidden;font-size:13.5px;line-height:1.45">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px minmax(0,1fr);gap:14px;padding:10px 14px;background:#1C1C1F;font-size:11px;font-weight:700;letter-spacing:0.12em;color:#9A9A9F"><span>QUÉ</span><span>EXPO GO</span><span>CÓMO</span></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px minmax(0,1fr);gap:14px;padding:10px 14px;border-top:1px solid #1F1F22;background:#141416"><span>Deslizar para quitar o eliminar</span><b style="color:#3DDC84">Sí</b><span style="color:#C9C9CC"><code>ReanimatedSwipeable</code> de react-native-gesture-handler</span></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px minmax(0,1fr);gap:14px;padding:10px 14px;border-top:1px solid #1F1F22;background:#141416"><span>Menús ⋯ y pulsación larga</span><b style="color:#3DDC84">Sí</b><span style="color:#C9C9CC"><code>Pressable onLongPress</code> + la <code>Sheet</code> de S4 (o <code>ActionSheetIOS</code>)</span></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px minmax(0,1fr);gap:14px;padding:10px 14px;border-top:1px solid #1F1F22;background:#141416"><span>Reordenar con ↑/↓ y animaciones</span><b style="color:#3DDC84">Sí</b><span style="color:#C9C9CC">Reanimated, <code>LinearTransition</code></span></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px minmax(0,1fr);gap:14px;padding:10px 14px;border-top:1px solid #1F1F22;background:#141416"><span>Notificación local de fin de descanso</span><b style="color:#3DDC84">Sí</b><span style="color:#C9C9CC">expo-notifications, programada en el teléfono. Las push remotas no van en Expo Go, pero acá no se usan. Probarlo en el iPhone con la app en segundo plano.</span></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px minmax(0,1fr);gap:14px;padding:10px 14px;border-top:1px solid #1F1F22;background:rgba(255,77,106,0.06)"><span>Live Activity del descanso</span><b style="color:#FF4D6A">No</b><span style="color:#C9C9CC">Necesita un build propio. Va en la V2 y no entra en esta tanda.</span></div>
+      </div>
+      <span style="font-size:12px;font-weight:700;letter-spacing:0.14em;color:#9A9A9F;margin-top:8px">9 · FUERA DE ESTA TANDA</span>
+      <div style="padding:14px 16px;border-radius:12px;background:#141416;border:1px solid #2A2A2E;font-size:13.5px;line-height:1.5;color:#C9C9CC">• Guardar un entreno libre como rutina nueva: es una buena idea para después, no se diseñó.<br>• Reordenar arrastrando: se usa ↑/↓, igual que en Armar día.<br>• La Live Activity (V2).</div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":4300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

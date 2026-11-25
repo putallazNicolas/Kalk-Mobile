@@ -5,7 +5,15 @@
  * so they work identically with the in-memory and the SQLite implementations.
  * Created with `createDomainServices(repos, options)`.
  */
-import type { Exercise, ID, ISODateString, Routine, Workout, WorkoutSet } from './entities';
+import type {
+  Exercise,
+  ID,
+  ISODateString,
+  PlanChangeDecision,
+  Routine,
+  Workout,
+  WorkoutSet,
+} from './entities';
 import type { DataSnapshot, Repositories, RoutineDayDetail, WorkoutDetail } from './repositories';
 
 export interface ServiceOptions {
@@ -110,9 +118,12 @@ export const EXPORT_FORMAT = 'gym-app-export';
 /**
  * v2 (Ajustes UX): PlannedExercise has repsMode + plannedSets instead of sets + reps; WorkoutExercise
  * has plannedSetReps; Exercise has updatedAt and optional secondaryMuscleGroups / notes / archived.
- * importAllData still accepts v1 files and converts them.
+ * v3 (Flexibilidad): Workout has kind, name (was dayNameSnapshot), planSnapshot,
+ * planChangeDecision; WorkoutExercise has origin + plannedExerciseId; WorkoutSet has source;
+ * Settings has restNotifications. Soft-deleted workouts are not exported.
+ * importAllData still accepts v1 and v2 files and converts them.
  */
-export const EXPORT_VERSION = 2;
+export const EXPORT_VERSION = 3;
 
 export interface ExportPayload {
   format: typeof EXPORT_FORMAT;
@@ -121,6 +132,36 @@ export interface ExportPayload {
   /** App version that produced the file (informational). */
   appVersion?: string;
   data: DataSnapshot;
+}
+
+/** One structural change of a routine workout against its planSnapshot (design/S6 §5). */
+export type PlanChangeItem =
+  | { kind: 'added'; exerciseId: ID; exerciseName: string; sets: number; reps: string }
+  | { kind: 'removed'; plannedExerciseId: ID; exerciseName: string }
+  | { kind: 'setsChanged'; plannedExerciseId: ID; exerciseName: string; from: number; to: number }
+  | { kind: 'reordered' };
+
+/**
+ * What the "Actualizar <día>" card of the summary shows:
+ * - "none": no structural change (or not a routine workout, or no planSnapshot): no card.
+ * - "changed": `items` lists the changes; the card offers to update the routine.
+ * - "routineChanged": the routine day was edited (or deleted) while training: the card only says
+ *   "La rutina cambió mientras entrenabas. Editala en Rutinas".
+ * - "decided": already answered (`decision`).
+ */
+export interface PlanChanges {
+  status: 'none' | 'changed' | 'routineChanged' | 'decided';
+  dayName?: string;
+  items: PlanChangeItem[];
+  decision?: PlanChangeDecision;
+}
+
+/** A record of the workout being deleted and the best it goes back to (design/S6 §4). */
+export interface DeletionImpactRecord {
+  exerciseId: ID;
+  exerciseName: string;
+  /** The best set excluding that workout; undefined if there was no earlier history. */
+  previous?: BestSet;
 }
 
 export interface ImportResult {
@@ -138,6 +179,21 @@ export interface DomainServices {
    */
   startWorkoutFromDay(dayId: ID): Promise<WorkoutDetail>;
   /**
+   * Starts an empty free workout (kind "free", name FREE_WORKOUT_DEFAULT_NAME). Rejects with
+   * ValidationError if another workout is in progress. A free workout never advances the
+   * suggested day of the routine.
+   */
+  startFreeWorkout(): Promise<WorkoutDetail>;
+  /**
+   * Adds exercises to a workout in progress right after the current one (`afterOrder`, end when
+   * undefined): origin "added", 3 sets prefilled from the previous performance, plan "10".
+   */
+  addExercisesToWorkout(
+    workoutId: ID,
+    exerciseIds: ID[],
+    options?: { afterOrder?: number },
+  ): Promise<WorkoutDetail>;
+  /**
    * Day after the one of the last finished workout of the active routine (wrapping around).
    * First day if the routine was never trained or that day no longer exists.
    * null if there is no active routine or it has no days.
@@ -152,8 +208,24 @@ export interface DomainServices {
   completeSet(setId: ID, values: { weightKg?: number; reps?: number }): Promise<WorkoutSet>;
   /** Marks a set as not completed again (keeps values). */
   uncompleteSet(setId: ID): Promise<WorkoutSet>;
-  /** Sets finishedAt = now (and notes, if given). */
+  /**
+   * Sets finishedAt = now (and notes, if given). A free workout still named
+   * FREE_WORKOUT_DEFAULT_NAME gets "Libre · <group>" or "Libre · <group> y <group>" from the muscle
+   * regions with the most completed sets (Piernas, Pecho, Espalda, Hombros, Brazos, Core…).
+   */
   finishWorkout(workoutId: ID, options?: { notes?: string }): Promise<Workout>;
+  /** Structural changes of a finished routine workout against its planSnapshot. */
+  getPlanChanges(workoutId: ID): Promise<PlanChanges>;
+  /**
+   * "Actualizar <día>": applies the changes to the routine day in one transaction (set counts,
+   * added and removed exercises, order; kg, reps and rest untouched) and stores decision
+   * "applied". ValidationError unless getPlanChanges is "changed".
+   */
+  applyPlanChanges(workoutId: ID): Promise<void>;
+  /** "Dejar la rutina como está": stores decision "kept". */
+  keepPlan(workoutId: ID): Promise<void>;
+  /** Records set in a finished workout and what each goes back to if it is deleted. */
+  getDeletionImpact(workoutId: ID): Promise<DeletionImpactRecord[]>;
   getWorkoutSummary(workoutId: ID): Promise<WorkoutSummary>;
   /** Last finished workouts with their stats, most recent first. */
   getRecentWorkouts(limit: number): Promise<WorkoutListItem[]>;

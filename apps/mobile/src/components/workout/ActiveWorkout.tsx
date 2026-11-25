@@ -418,7 +418,7 @@ export function ActiveWorkout({
       <ScreenHeader
         accent
         label={routineName ? `Entrenando · ${routineName}` : 'Entrenando'}
-        title={workout.dayNameSnapshot}
+        title={workout.name}
         right={
           <Button
             title="Finalizar"

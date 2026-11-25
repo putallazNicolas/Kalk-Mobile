@@ -85,7 +85,7 @@ function RecentRow({
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`${item.workout.dayNameSnapshot}, ${formatDate(started)}, ${formatDurationHuman(item.durationSeconds)}`}
+      accessibilityLabel={`${item.workout.name}, ${formatDate(started)}, ${formatDurationHuman(item.durationSeconds)}`}
       onPress={onPress}
       style={styles.recent}
     >
@@ -95,7 +95,7 @@ function RecentRow({
       </View>
       <View style={styles.recentText}>
         <Text variant="bodyMSemi" numberOfLines={1}>
-          {item.workout.dayNameSnapshot}
+          {item.workout.name}
         </Text>
         <Text variant="caption">{formatDurationHuman(item.durationSeconds)}</Text>
       </View>
@@ -170,7 +170,7 @@ export default function HoyScreen() {
       : 0;
     headline = {
       label: 'Quedó a medias',
-      title: data.inProgress.dayNameSnapshot,
+      title: data.inProgress.name,
       support: inProgressLine(done, total, new Date(data.inProgress.startedAt), now),
     };
   } else if (data && isEmpty) {
@@ -225,7 +225,7 @@ export default function HoyScreen() {
       : 0;
     const bannerSubtitle = inProgress
       ? [
-          inProgress.dayNameSnapshot,
+          inProgress.name,
           `empezado ${formatStartedAt(inProgress.startedAt, now)}`,
           inProgressDetail
             ? `${finishedCount} de ${inProgressDetail.exercises.length} ${inProgressDetail.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}`

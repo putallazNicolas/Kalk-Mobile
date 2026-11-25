@@ -38,6 +38,11 @@ Las hojas de edición no llevan este header.
 - Últimos 3 entrenamientos (fecha, día, duración, volumen). Al tocar uno se ve su resumen.
 - Estado vacío (sin rutinas): CTA **"Armá tu primera rutina"** que lleva a Armar rutina. Frase: "Armá tu
   primera rutina y **Kalk** te sugiere qué entrenar cada día."
+- **Entreno libre** (`design/F1` 2A/2B): fila de 60 pt "Entreno libre" debajo de la card del día; con Hoy vacía, botón
+  secundario debajo de "Armá tu primera rutina". Abre Entrenando vacío.
+- **Historial:** deslizar una fila de "Últimos entrenamientos" a la izquierda muestra "Eliminar" (deslizar hasta el
+  fondo ejecuta). Diálogo con el impacto en los récords y toast "Deshacer" de 5 s (`design/F1` 1D–1F). Los entrenos
+  libres llevan el tag gris LIBRE.
 
 ## 4.2 Entrenando (entrenamiento activo) — decisiones CERRADAS
 
@@ -68,12 +73,36 @@ Las hojas de edición no llevan este header.
 - Pantalla siempre encendida mientras se entrena (`expo-keep-awake`).
 - Finalizar: si quedan series sin completar, se confirma con un diálogo. Después va al Resumen.
 
+### Flexibilidad (`design/S6`, `F1`; se suma a lo cerrado de arriba, que no cambia)
+
+- **⋯ arriba** (44 pt, borde `borderStrong`, a la izquierda de "Finalizar"): Agregar ejercicio · Reordenar ejercicios
+  · Descartar entrenamiento. **Descartar** pide confirmación si hay series hechas y borra el entreno de verdad (nunca
+  llegó al historial). Finalizar sin ninguna serie hecha ofrece descartarlo (1C).
+- **Entreno libre vacío** (2C): card punteada "Sumá el primer ejercicio" con el botón primario; "Finalizar" con
+  borde gris mientras no haya series.
+- **Modificar sobre la marcha** (3A–3C): "+ Serie" punteado al pie de la card en curso (la nueva usa kg y reps de la
+  última); deslizar una serie a la izquierda para "Quitar"; ⋯ en la card en curso y pulsación larga (400 ms) en los
+  demás ejercicios: Agregar serie · Reemplazar ejercicio · Mover arriba · Mover abajo · Quitar ejercicio. Reordenar
+  en una hoja con ↑/↓ (los terminados quedan arriba). Un ejercicio agregado entra **después del actual**, con el tag
+  gris AGREGADO; una serie agregada muestra AGREGADA mientras está pendiente. Quitar una serie o un ejercicio sin
+  series hechas muestra el toast "Deshacer".
+- **Aviso de fin de descanso** (4A): en el primer descanso, una tarjeta flotante encima del temporizador ofrece
+  "Activar aviso" / "Ahora no" (no bloquea el temporizador). Con el aviso activo, al empezar cada descanso se programa
+  una notificación local; se cancela si el descanso se cierra, se completa otra serie, o se finaliza o descarta el
+  entreno. Con la app abierta no se muestra (ya están el haptic y "A LA BARRA").
+
 ## 4.3 Resumen post-entreno
 
 - Duración, series completadas, volumen total y cantidad de ejercicios.
 - Lista de ejercicios con su mejor serie.
 - PRs nuevos destacados (peso máximo o e1RM), si hay.
 - Campo de notas y botón **"Guardar y volver"**, que lleva a Hoy.
+- **Libre** (2E): el nombre automático ("Libre · Piernas") se puede editar.
+- **"Actualizar <día>"** (3E, variante B): si un entreno con rutina cambió de estructura (series, ejercicios
+  agregados o quitados, orden), una card lista los cambios y ofrece "Actualizar <día>" (secundario) y "Dejar la rutina
+  como está" (ghost). Sin modal; si no se elige, la rutina no cambia. Si la rutina se editó mientras entrenabas: "La
+  rutina cambió mientras entrenabas. Editala en Rutinas".
+- **Eliminar** el entreno (con el mismo diálogo de récords y "Deshacer").
 
 ## 4.4 Mis rutinas (tab Rutinas)
 
@@ -162,6 +191,8 @@ Las hojas de edición no llevan este header.
   120 × 120 centrada). Oculta el splash nativo en su primer layout. Si tarda más de 1,5 s, "Preparando tus
   datos…". Al terminar, la K escala a 0,9 y se desvanece (200 ms) y la app entra con fundido subiendo 8 pt
   (280 ms, 80 ms después). Con Reduce Motion, solo fundido de 150 ms. Si falla, el error va sobre el mismo fondo.
+- **Aviso de fin de descanso** (4C): fila con título, explicación y switch. Si iOS tiene el permiso negado, en lugar
+  del switch va "Abrir Ajustes".
 
 ## Rutas sugeridas (expo-router, `apps/mobile/src/app/`)
 

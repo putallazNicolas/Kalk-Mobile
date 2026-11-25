@@ -78,6 +78,33 @@ regla que la migración).
 - `summarizePlannedSets(pe)` — "4 × 8-10" (igual en todas) o "5 · 3 · 1 · AMRAP" (por serie).
 - `plannedRepsForSet(plannedSetReps, setIndex)` — reps planificadas de una serie (repite la última si sobra).
 
+## v3 · Flexibilidad (2026-11-25)
+
+Diseño: `design/S6-Notas-Flexibilidad.dc.html` §3–§5.
+
+- **`Workout`:** `kind: 'routine' | 'free'`; `name` (antes `dayNameSnapshot`: en rutina, el nombre del día; en
+  libre, `FREE_WORKOUT_DEFAULT_NAME` hasta finalizar y después "Libre · Piernas", editable, máximo
+  `WORKOUT_NAME_MAX_LENGTH`); `planSnapshot?: PlanSnapshotItem[]` (`plannedExerciseId`, `exerciseId`,
+  `order`, `sets`, copiado al empezar); `planChangeDecision?: 'applied' | 'kept'`; `deletedAt?` (borrado
+  suave). `routineId`/`dayId` siguen opcionales (`undefined` = libre).
+- **`WorkoutExercise`:** `origin: 'planned' | 'added'` (AGREGADO) y `plannedExerciseId?`. `order` editable.
+- **`WorkoutSet`:** `source: 'planned' | 'added'` (AGREGADA).
+- **`Settings`:** `restNotifications: 'unasked' | 'on' | 'off'` (default `'unasked'`).
+- **`WorkoutRepo`:** `delete` pasa a `discard` (solo en curso, borrado físico: nunca llegó al historial);
+  `softDelete` / `restore` (finalizados); `update` acepta `name` y `planChangeDecision`;
+  `addWorkoutExercises(workoutId, inputs, { afterOrder })`, `removeWorkoutExercise`,
+  `reorderWorkoutExercises`; `addSet` crea con `source: 'added'`. **Ningún método ve los borrados** salvo
+  `restore`: listas, historial, récords, progreso y stats los filtran.
+- **Servicios:** `startFreeWorkout`, `addExercisesToWorkout` (después del actual), `finishWorkout` pone el
+  nombre automático del libre, `getPlanChanges` / `applyPlanChanges` / `keepPlan` (card "Actualizar
+  <día>"), `getDeletionImpact` (récords que vuelven al anterior).
+- **Récords:** se calculan, no se guardan (ya era así): al borrar un entreno, el récord vuelve solo al
+  anterior.
+- **Export v3:** con los campos nuevos y sin los entrenos borrados. Importa v1, v2 y v3.
+- **Migración SQLite:** los entrenos existentes quedan `kind = 'routine'`, `name = day_name_snapshot`, sin
+  `planSnapshot` (no hay diff hacia atrás); sus ejercicios `origin = 'planned'`; sus series
+  `source = 'planned'`. Ningún resultado cambia.
+
 ## Historial de cambios
 
 - v1 (M0): contrato inicial. Agregados respecto del brief: `WorkoutExercise.skipped`, `restSeconds` y
