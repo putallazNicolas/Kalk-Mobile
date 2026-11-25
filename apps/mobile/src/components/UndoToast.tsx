@@ -12,6 +12,7 @@ interface Shown extends UndoRequest {
 }
 
 let present: ((request: UndoRequest) => void) | null = null;
+let hide: (() => void) | null = null;
 let counter = 0;
 
 /**
@@ -20,6 +21,14 @@ let counter = 0;
  */
 export function showUndoToast(request: UndoRequest) {
   present?.(request);
+}
+
+/**
+ * Hides the undo toast when what it offers to undo was already written (e.g. the screen that
+ * deferred a removal closed early): a "Deshacer" that does nothing must never stay on screen.
+ */
+export function hideUndoToast() {
+  hide?.();
 }
 
 /** Mount once at the root, next to the confirm host. */
@@ -31,8 +40,10 @@ export function UndoToastHost() {
       counter += 1;
       setShown({ ...request, key: counter });
     };
+    hide = () => setShown(null);
     return () => {
       present = null;
+      hide = null;
     };
   }, []);
 

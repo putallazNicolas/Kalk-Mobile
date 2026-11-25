@@ -49,15 +49,18 @@ interface ToastState {
 }
 
 export default function PickExerciseScreen() {
-  const { dayId, workoutId, afterOrder, savedId, savedKind, savedAt } = useLocalSearchParams<{
-    dayId?: string;
-    /** Add-to-workout mode: the workout in progress and the order of the exercise in progress. */
-    workoutId?: string;
-    afterOrder?: string;
-    savedId?: string;
-    savedKind?: string;
-    savedAt?: string;
-  }>();
+  const { dayId, workoutId, afterOrder, replaceId, savedId, savedKind, savedAt } =
+    useLocalSearchParams<{
+      dayId?: string;
+      /** Add-to-workout mode: the workout in progress and the order of the exercise in progress. */
+      workoutId?: string;
+      afterOrder?: string;
+      /** Replace mode (single select): the workout exercise the picked one takes the place of. */
+      replaceId?: string;
+      savedId?: string;
+      savedKind?: string;
+      savedAt?: string;
+    }>();
   const repos = useRepositories();
   const services = useServices();
   const router = useRouter();
@@ -105,7 +108,7 @@ export default function PickExerciseScreen() {
     setSearch('');
     setGroup(undefined);
     setCustomOnly(false);
-    setSelected((s) => (s.includes(savedId) ? s : [...s, savedId]));
+    setSelected((s) => (replaceId ? [savedId] : s.includes(savedId) ? s : [...s, savedId]));
     setHighlightId(savedId);
     pendingScroll.current = savedId;
     setToast({
@@ -116,7 +119,7 @@ export default function PickExerciseScreen() {
     reload();
     const timer = setTimeout(() => setHighlightId(undefined), HIGHLIGHT_MS + 200);
     return () => clearTimeout(timer);
-  }, [savedId, savedKind, savedAt, reload]);
+  }, [savedId, savedKind, savedAt, replaceId, reload]);
 
   // Once the refreshed list is in, bring the saved exercise into view.
   useEffect(() => {
@@ -132,7 +135,10 @@ export default function PickExerciseScreen() {
 
   function toggle(id: string) {
     haptics.selection();
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+    // Replace mode picks one: tapping another one moves the selection.
+    setSelected((s) =>
+      s.includes(id) ? s.filter((x) => x !== id) : replaceId ? [id] : [...s, id],
+    );
   }
 
   async function add() {
@@ -140,11 +146,13 @@ export default function PickExerciseScreen() {
     setAdding(true);
     // In a workout in progress they enter right after the exercise being done.
     const ok = await attempt(async () => {
-      if (workoutId)
+      if (workoutId) {
         await services.addExercisesToWorkout(workoutId, selected, {
           afterOrder: afterOrder === undefined ? undefined : Number(afterOrder),
         });
-      else
+        // The new one enters right after the old one, which then leaves: same position.
+        if (replaceId) await repos.workouts.removeWorkoutExercise(replaceId);
+      } else
         await repos.routines.addPlannedExercises(
           dayId as string,
           selected.map((exerciseId) => ({ exerciseId })),
@@ -160,6 +168,7 @@ export default function PickExerciseScreen() {
     ...(dayId ? { dayId } : {}),
     ...(workoutId ? { workoutId } : {}),
     ...(afterOrder !== undefined ? { afterOrder } : {}),
+    ...(replaceId ? { replaceId } : {}),
   };
 
   function openCreate() {
@@ -343,7 +352,7 @@ export default function PickExerciseScreen() {
           pointerEvents="none"
         />
         <Button
-          title={`Agregar (${selected.length})`}
+          title={replaceId ? 'Reemplazar' : `Agregar (${selected.length})`}
           size="lg"
           disabled={selected.length === 0 || (!dayId && !workoutId)}
           loading={adding}
