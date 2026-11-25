@@ -8,6 +8,7 @@ import {
 } from '@gym/core';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import PickExerciseScreen from '../app/elegir-ejercicio';
@@ -23,12 +24,6 @@ jest.mock(
   'expo-router',
   () => (jest.requireActual('./routerMock') as typeof import('./routerMock')).expoRouterMock,
 );
-// Gestures cannot run under Jest: the swipeable row renders plain and the tests use the row's
-// accessibility action "Quitar serie", which does the same as a full swipe.
-jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => ({
-  __esModule: true,
-  default: ({ children }: { children: unknown }) => children,
-}));
 jest.mock('../components/workout/RestTimerBar', () => ({ RestTimerBar: () => null }));
 jest.mock('../lib/useNow', () => ({ useNow: () => Date.now() }));
 
@@ -74,13 +69,15 @@ async function fixture(): Promise<Fixture> {
 
 function renderWith(f: Fixture, ui: ReactElement) {
   return render(
-    <SafeAreaProvider initialMetrics={METRICS}>
-      <DataProvider repositories={f.repos}>
-        {ui}
-        <ConfirmHost />
-        <UndoToastHost />
-      </DataProvider>
-    </SafeAreaProvider>,
+    <GestureHandlerRootView>
+      <SafeAreaProvider initialMetrics={METRICS}>
+        <DataProvider repositories={f.repos}>
+          {ui}
+          <ConfirmHost />
+          <UndoToastHost />
+        </DataProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>,
   );
 }
 

@@ -59,6 +59,11 @@ interface ActiveWorkoutProps {
   routineName?: string;
   unit: WeightUnit;
   restTimerEnabled: boolean;
+  /**
+   * Exercises whose sets need the kg typed in before ✓ (lib/weightRule). Missing ids complete
+   * without kg.
+   */
+  needsWeight?: Record<string, boolean>;
   /** Settings.restNotifications: the end-of-rest notification (design/S6 §6). */
   restNotifications: RestNotificationState;
   /** How long a removal waits for "Deshacer" before it is written (the toast's 5 s). */
@@ -124,6 +129,7 @@ export function ActiveWorkout({
   unit,
   restTimerEnabled,
   restNotifications,
+  needsWeight = {},
   removalDelayMs = UNDO_TOAST_MS,
 }: ActiveWorkoutProps) {
   useScreenAwake();
@@ -150,7 +156,11 @@ export function ActiveWorkout({
   });
   const [menuId, setMenuId] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
-  const [shake, setShake] = useState<{ setId: string; n: number } | null>(null);
+  const [shake, setShake] = useState<{
+    setId: string;
+    n: number;
+    field: 'kg' | 'reps';
+  } | null>(null);
 
   const inputRefs = useRef(new Map<string, TextInputInstance>());
   const pendingFocus = useRef<string | null>(null);
@@ -333,6 +343,14 @@ export function ActiveWorkout({
 
     const input = inputsRef.current[setId] ?? { kg: '', reps: '' };
     const weightKg = inputToKg(input.kg, unit);
+    // Empty kg on a loaded exercise (dumbbells, barbell, machine…): not completed, the kg field
+    // shakes and gets focus, the same as reps with nothing planned. Bodyweight completes as is.
+    if (weightKg === undefined && needsWeight[ex.exerciseId]) {
+      haptics.warning();
+      setShake((s) => ({ setId, n: (s?.n ?? 0) + 1, field: 'kg' }));
+      focusKey(`${setId}:kg`);
+      return;
+    }
     let reps = inputToReps(input.reps);
     if (reps === undefined) {
       // Empty reps: complete with this set's planned number ("10"); a range ("8-10") or AMRAP has
@@ -342,7 +360,7 @@ export function ActiveWorkout({
       );
       if (planned === null) {
         haptics.warning();
-        setShake((s) => ({ setId, n: (s?.n ?? 0) + 1 }));
+        setShake((s) => ({ setId, n: (s?.n ?? 0) + 1, field: 'reps' }));
         focusKey(`${setId}:reps`);
         return;
       }

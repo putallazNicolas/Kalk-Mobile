@@ -7,6 +7,7 @@ import {
   type WorkoutDetail,
 } from '@gym/core';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ConfirmHost } from '../components/ConfirmDialog';
@@ -19,10 +20,6 @@ jest.mock(
   'expo-router',
   () => (jest.requireActual('./routerMock') as typeof import('./routerMock')).expoRouterMock,
 );
-jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => ({
-  __esModule: true,
-  default: ({ children }: { children: unknown }) => children,
-}));
 jest.mock('../lib/useNow', () => ({ useNow: () => Date.now() }));
 // The real bar animates an SVG ring; here it only exposes its two actions.
 jest.mock('../components/workout/RestTimerBar', () => {
@@ -82,20 +79,22 @@ async function open(mode: RestNotificationState, restSeconds = 90) {
   const initial = (await repos.workouts.getById(started.id))!;
   const names = Object.fromEntries(catalog.map((e) => [e.id, e.name]));
   const view = await render(
-    <SafeAreaProvider initialMetrics={METRICS}>
-      <DataProvider repositories={repos}>
-        <ActiveWorkout
-          initial={initial}
-          names={names}
-          previous={{}}
-          bests={{}}
-          unit="kg"
-          restTimerEnabled
-          restNotifications={mode}
-        />
-        <ConfirmHost />
-      </DataProvider>
-    </SafeAreaProvider>,
+    <GestureHandlerRootView>
+      <SafeAreaProvider initialMetrics={METRICS}>
+        <DataProvider repositories={repos}>
+          <ActiveWorkout
+            initial={initial}
+            names={names}
+            previous={{}}
+            bests={{}}
+            unit="kg"
+            restTimerEnabled
+            restNotifications={mode}
+          />
+          <ConfirmHost />
+        </DataProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>,
   );
   return {
     repos,

@@ -4,6 +4,7 @@ import { EmptyState, ErrorState, LoadingState, ScreenContainer } from '../../com
 import { ActiveWorkout } from '../../components/workout/ActiveWorkout';
 import { useRepositories, useServices } from '../../data/DataProvider';
 import { useFocusAsync } from '../../data/useFocusAsync';
+import { needsWeight } from '../../lib/weightRule';
 
 export default function WorkoutScreen() {
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>();
@@ -18,6 +19,7 @@ export default function WorkoutScreen() {
     const ids = workout.exercises.map((e) => e.exerciseId);
     const exercises = await repos.exercises.getByIds(ids);
     const names = Object.fromEntries(exercises.map((e) => [e.id, e.name]));
+    const weighted = Object.fromEntries(exercises.map((e) => [e.id, needsWeight(e)]));
     const cues = Object.fromEntries(
       exercises.filter((e) => e.notes?.trim()).map((e) => [e.id, e.notes as string]),
     );
@@ -39,6 +41,7 @@ export default function WorkoutScreen() {
       workout,
       settings,
       names,
+      weighted,
       cues,
       previous: Object.fromEntries(prevEntries),
       bests: Object.fromEntries(bestEntries),
@@ -77,6 +80,7 @@ export default function WorkoutScreen() {
       routineName={data.routineName}
       unit={data.settings.unit}
       restTimerEnabled={data.settings.restTimerEnabled}
+      needsWeight={data.weighted}
       restNotifications={data.settings.restNotifications}
     />
   );
