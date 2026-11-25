@@ -36,6 +36,7 @@ import { confirm } from '../ConfirmDialog';
 import { ScreenContainer } from '../ScreenContainer';
 import { ScreenHeader } from '../ScreenHeader';
 import { Text } from '../Text';
+import { AddExerciseButton, EmptyWorkout } from './EmptyWorkout';
 import { ExerciseBlock, type ExerciseMode, type SetInput } from './ExerciseBlock';
 import { RestTimerBar } from './RestTimerBar';
 import { WorkoutMenu } from './WorkoutMenu';
@@ -184,6 +185,9 @@ export function ActiveWorkout({
         ...inputsRef.current,
       };
       setInputsState(inputsRef.current);
+      // Nothing open (e.g. the first exercise of a free workout, or everything done): open the
+      // first one just added, which is what the person is about to do (design/S6 §1, decision 4).
+      if (expandedRef.current === null) setExpanded(added[0]!.id);
     }
     // Only a different structure should merge; the other values are read at that moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -401,7 +405,7 @@ export function ActiveWorkout({
     if (doneSets > 0) {
       const ok = await confirm({
         title: `¿Descartar ${workoutRef.current.name}?`,
-        message: `Se borran las ${doneSets} ${doneSets === 1 ? 'serie' : 'series'} que cargaste hoy y no queda en el historial.${workoutRef.current.kind === 'free' ? '' : ' La rutina no cambia.'}`,
+        message: `${doneSets === 1 ? 'Se borra la serie' : `Se borran las ${doneSets} series`} que cargaste hoy y no queda en el historial.${workoutRef.current.kind === 'free' ? '' : ' La rutina no cambia.'}`,
         confirmLabel: 'Descartar',
         cancelLabel: 'Seguir',
         destructive: true,
@@ -513,7 +517,13 @@ export function ActiveWorkout({
     <ScreenContainer edges={['top', 'left', 'right', 'bottom']}>
       <ScreenHeader
         accent
-        label={routineName ? `Entrenando · ${routineName}` : 'Entrenando'}
+        label={
+          workout.kind === 'free'
+            ? 'Entrenando · Libre'
+            : routineName
+              ? `Entrenando · ${routineName}`
+              : 'Entrenando'
+        }
         title={workout.name}
         right={
           <View style={styles.headerActions}>
@@ -559,6 +569,8 @@ export function ActiveWorkout({
             key={e.id}
             exercise={e}
             name={names[e.exerciseId] ?? 'Ejercicio'}
+            // AGREGADO only makes sense against a plan: in a free workout every exercise is added.
+            added={workout.kind === 'routine' && e.origin === 'added'}
             position={i}
             count={workout.exercises.length}
             mode={modeOf(e)}
@@ -583,6 +595,11 @@ export function ActiveWorkout({
             onBlockLayout={(y) => blockY.current.set(e.id, y)}
           />
         ))}
+        {workout.exercises.length === 0 ? (
+          <EmptyWorkout onAdd={addExercise} />
+        ) : (
+          <AddExerciseButton onPress={addExercise} />
+        )}
         {allDone ? (
           <Animated.View entering={FadeInDown.duration(320)} style={styles.allDone}>
             <Text variant="label" color="success">

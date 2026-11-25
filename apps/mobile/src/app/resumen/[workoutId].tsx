@@ -7,6 +7,7 @@ import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-rea
 
 import {
   Button,
+  EditableTitle,
   EmptyState,
   ErrorState,
   LoadingState,
@@ -225,6 +226,14 @@ export default function SummaryScreen() {
     if (ok) router.dismissAll();
   }
 
+  /** Saves the new name of a free workout; EditableTitle keeps it on screen until the reload lands. */
+  async function rename(name: string): Promise<boolean> {
+    const saved = await attempt(() => repos.workouts.update(workoutId, { name }));
+    if (!saved) return false;
+    reload();
+    return true;
+  }
+
   /** Confirms (with what happens to the records), deletes and goes back to Hoy, where the undo toast shows. */
   async function removeWorkout() {
     const deleted = await deleteFinishedWorkout({ repos, services, unit }, workoutId);
@@ -242,11 +251,24 @@ export default function SummaryScreen() {
       >
         <View style={styles.head}>
           <Text variant="label" color="success">
-            Entrenamiento terminado
+            {data.workout.kind === 'free'
+              ? 'Entrenamiento terminado · Libre'
+              : 'Entrenamiento terminado'}
           </Text>
-          <Text variant="displayXL" accessibilityRole="header">
-            {data.workout.name}
-          </Text>
+          {data.workout.kind === 'free' ? (
+            // The automatic name ("Libre · Piernas") can be changed (design/F1 2E, S6 §1 decision 2).
+            <EditableTitle
+              label="Nombre del entreno"
+              value={data.workout.name}
+              onCommit={rename}
+              placeholder="Nombre del entreno"
+              idleHelper="Nombre automático según los grupos que entrenaste. Tocalo para cambiarlo."
+            />
+          ) : (
+            <Text variant="displayXL" accessibilityRole="header">
+              {data.workout.name}
+            </Text>
+          )}
           <Text variant="bodyS" color="textSecondary">
             {dateText.charAt(0).toUpperCase() + dateText.slice(1)} · {timeRange}
           </Text>
