@@ -2,6 +2,7 @@ import {
   plannedRepsForSet,
   plannedRepsToNumber,
   type PreviousPerformance,
+  type RestNotificationState,
   type WeightUnit,
   type WorkoutDetail,
   type WorkoutExerciseDetail,
@@ -41,7 +42,9 @@ import { hideUndoToast, showUndoToast } from '../UndoToast';
 import { AddExerciseButton, EmptyWorkout } from './EmptyWorkout';
 import { ExerciseBlock, type ExerciseMode, type SetInput } from './ExerciseBlock';
 import { ExerciseMenu } from './ExerciseMenu';
+import { RestNotificationPrompt } from './RestNotificationPrompt';
 import { RestTimerBar } from './RestTimerBar';
+import { nextUpAfter, useRestNotification, type ActiveRest } from './useRestNotification';
 import { WorkoutMenu } from './WorkoutMenu';
 import { ProgressSegments, WorkoutStats } from './WorkoutProgress';
 
@@ -56,6 +59,8 @@ interface ActiveWorkoutProps {
   routineName?: string;
   unit: WeightUnit;
   restTimerEnabled: boolean;
+  /** Settings.restNotifications: the end-of-rest notification (design/S6 §6). */
+  restNotifications: RestNotificationState;
   /** How long a removal waits for "Deshacer" before it is written (the toast's 5 s). */
   removalDelayMs?: number;
 }
@@ -88,8 +93,10 @@ function buildInputs(workout: WorkoutDetail, unit: WeightUnit): Record<string, S
   return out;
 }
 
-function restFrom(seconds: number): { endsAt: number; total: number } {
-  return { endsAt: Date.now() + seconds * 1000, total: seconds };
+let restCount = 0;
+function restFrom(seconds: number, next: ActiveRest['next']): ActiveRest {
+  restCount += 1;
+  return { id: restCount, endsAt: Date.now() + seconds * 1000, total: seconds, next };
 }
 
 /** setIndex follows the position, as the repositories renumber it after a removal. */
@@ -116,6 +123,7 @@ export function ActiveWorkout({
   routineName,
   unit,
   restTimerEnabled,
+  restNotifications,
   removalDelayMs = UNDO_TOAST_MS,
 }: ActiveWorkoutProps) {
   useScreenAwake();
@@ -136,7 +144,10 @@ export function ActiveWorkout({
   const [workout, setWorkoutState] = useState(initial);
   const [inputs, setInputsState] = useState(seed.inputs);
   const [expandedId, setExpandedState] = useState<string | null>(seed.expanded);
-  const [rest, setRest] = useState<{ endsAt: number; total: number } | null>(null);
+  const [rest, setRest] = useState<ActiveRest | null>(null);
+  const restNotice = useRestNotification(rest, restNotifications, (next) => {
+    void attempt(() => repos.settings.update({ restNotifications: next }));
+  });
   const [menuId, setMenuId] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [shake, setShake] = useState<{ setId: string; n: number } | null>(null);
@@ -363,7 +374,12 @@ export function ActiveWorkout({
     // the visual focus frame (focusSetId); its input is not focused.
     const restFor = restSecondsFor(ex);
     // "Sin descanso" (0) shows no bar, and drops a bar left over from the previous exercise.
-    if (restTimerEnabled) setRest(restFor > 0 ? restFrom(restFor) : null);
+    if (restTimerEnabled) {
+      const started =
+        restFor > 0 ? restFrom(restFor, nextUpAfter(workoutRef.current, ex.id, names)) : null;
+      setRest(started);
+      if (started) restNotice.restStarted(started.id);
+    }
 
     if (!after?.sets.some((s) => !s.completed)) scheduleCollapse(ex.id);
 
@@ -671,7 +687,11 @@ export function ActiveWorkout({
   function addRest() {
     if (!rest) return;
     const endsAt = Math.max(Date.now(), rest.endsAt) + ADD_REST_SECONDS * 1000;
-    setRest({ endsAt, total: Math.max(rest.total, Math.ceil((endsAt - Date.now()) / 1000)) });
+    setRest({
+      ...rest,
+      endsAt,
+      total: Math.max(rest.total, Math.ceil((endsAt - Date.now()) / 1000)),
+    });
   }
 
   const elapsed = (now - Date.parse(workout.startedAt)) / 1000;
@@ -806,6 +826,9 @@ export function ActiveWorkout({
           </Animated.View>
         ) : null}
       </ScrollView>
+      {restNotice.promptVisible ? (
+        <RestNotificationPrompt onEnable={restNotice.enable} onDismiss={restNotice.dismissPrompt} />
+      ) : null}
       {rest ? (
         <RestTimerBar
           endsAt={rest.endsAt}

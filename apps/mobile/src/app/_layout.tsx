@@ -30,6 +30,7 @@ import { BrandSplash, ConfirmHost, ErrorState, UndoToastHost } from '../componen
 
 import { DataProvider } from '../data/DataProvider';
 import { createRepositories } from '../data/createRepositories';
+import { installRestNotificationHandler } from '../lib/restNotifications';
 import { colors, motion } from '../theme';
 
 export { ErrorBoundary } from 'expo-router';
@@ -47,6 +48,8 @@ const sheetOptions = {
 } as const;
 
 preventAutoHideAsync().catch(() => undefined);
+// In the foreground the end-of-rest notification stays silent (design/S6 §6).
+installRestNotificationHandler();
 
 const navigationTheme = {
   ...DarkTheme,
