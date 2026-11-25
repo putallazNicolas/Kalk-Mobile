@@ -42,3 +42,4 @@ export { BrandSplash } from './brand/BrandSplash';
 export { KalkMark } from './brand/KalkMark';
 export { KalkWordmark } from './brand/KalkWordmark';
 export { AboutKalk } from './brand/AboutKalk';
+export { RestNotificationSetting } from './RestNotificationSetting';

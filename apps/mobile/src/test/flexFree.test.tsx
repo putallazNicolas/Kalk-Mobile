@@ -121,6 +121,7 @@ describe('Entrenando of a free workout', () => {
         bests={{}}
         unit="kg"
         restTimerEnabled={false}
+        restNotifications="off"
       />,
     );
   }

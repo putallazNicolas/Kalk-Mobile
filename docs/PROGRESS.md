@@ -1,5 +1,45 @@
 # Progreso
 
+## Flexibilidad en el entrenamiento y aviso de descanso (2026-11-25)
+
+Decisiones aprobadas: 1b · 2b · 3B · 4 después del actual · 5 primer descanso (`design/S6`, `F1`, `F1b`). PRs
+#48 (diseño y contratos v3), #49 (migración, PRs derivados, export v3), #50 (borrar), #52 (libre), #53
+(editar en el momento y «Actualizar <día>») y #54 (aviso de descanso).
+
+**Qué hay de nuevo en la app:**
+
+- **Entreno libre:** en Hoy, debajo de la tarjeta del día. Se suman ejercicios sobre la marcha y el nombre se
+  arma solo («Libre · Piernas»); se puede cambiar en el Resumen.
+- **Cambiar el entreno en el momento:** «+ Serie», deslizar una serie para quitarla, el ⋯ de cada ejercicio (o
+  mantenerlo apretado) para agregar serie, moverlo, reemplazarlo, saltarlo o quitarlo, y «Agregar ejercicio»,
+  que entra después del actual. Todo lo que se quita tiene «Deshacer» durante 5 s.
+- **Resumen:** si cambiaste el plan del día, la tarjeta «Cambiaste el plan de <día>» ofrece «Actualizar
+  <día>». La rutina solo cambia si la tocás.
+- **Borrar un entreno del historial:** deslizando la fila en Hoy o con «Eliminar entrenamiento» en el Resumen.
+  El diálogo dice qué récord vuelve al anterior y hay «Deshacer». Un entreno en curso se descarta desde su ⋯.
+- **Aviso de fin de descanso:** notificación local, sin servidor.
+
+Verificado en la vista web (sin warnings en la consola): entreno con rutina (+ Serie, quitar un ejercicio,
+finalizar, «Actualizar Día 1»), entreno libre con dos ejercicios, borrar el entreno con PR (el récord vuelve
+al anterior en Progreso, y «Deshacer» lo trae de vuelta) y descartar un entreno en curso.
+
+**Para probar en el iPhone (el aviso no se puede probar en la web):**
+
+1. Empezá un entreno y completá una serie: arriba del temporizador aparece «¿Te avisamos al terminar?».
+   Tocá «Activar aviso» y aceptá el permiso de iOS.
+2. Completá otra serie, bloqueá el teléfono y esperá a que termine el descanso: tiene que llegar «Descanso
+   terminado» con «A la barra: serie N de M · <ejercicio>». En Expo Go el aviso aparece como «Expo Go», no
+   como Kalk (en un build propio diría Kalk).
+3. Completá otra serie y cerrá el temporizador con ✕ (o completá otra serie antes de que termine): bloqueá el
+   teléfono y comprobá que no llega ningún aviso del descanso descartado.
+4. Con la app abierta, al terminar el descanso no aparece banner ni suena: ya están la vibración y «A LA
+   BARRA».
+5. En Perfil, apagá «Aviso de fin de descanso» y repetí el paso 2: no llega nada. Si en algún momento negaste
+   el permiso, Perfil muestra «Abrir Ajustes».
+6. Si en la tarjeta tocás «Ahora no», no se vuelve a preguntar en Entrenando (se prende desde Perfil).
+
+Fuera de esta tanda: la Live Activity (el temporizador en la pantalla bloqueada) queda para V2.
+
 ## Hoy rediseñada: KALK arriba y titular (2026-11-19)
 
 Opción 1 de `design/L5` (reemplaza a la B). **En Expo Go:** arriba de Hoy, "KΛLK" centrado en hueso; debajo un

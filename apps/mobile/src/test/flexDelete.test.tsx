@@ -212,6 +212,7 @@ describe('Entrenando: discard', () => {
         bests={{}}
         unit="kg"
         restTimerEnabled={false}
+        restNotifications="off"
       />,
     );
     return { fx, id: started.id };

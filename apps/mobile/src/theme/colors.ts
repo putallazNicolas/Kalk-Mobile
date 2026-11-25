@@ -39,6 +39,8 @@ export const colors = {
   dangerMuted: 'rgba(255,77,106,0.14)',
   chartWeight: '#8A8A90',
   scrim: 'rgba(0,0,0,0.66)',
+  /** Dims what is behind a non-blocking floating card (rest notification prompt, design/F1 4A). */
+  scrimLight: 'rgba(0,0,0,0.35)',
   transparent: 'transparent',
 } as const;
 

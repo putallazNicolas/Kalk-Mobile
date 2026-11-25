@@ -109,6 +109,7 @@ async function openWorkout(
       bests={{}}
       unit="kg"
       restTimerEnabled={false}
+      restNotifications="off"
       removalDelayMs={removalDelayMs}
     />,
   );

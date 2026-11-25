@@ -77,6 +77,7 @@ export default function WorkoutScreen() {
       routineName={data.routineName}
       unit={data.settings.unit}
       restTimerEnabled={data.settings.restTimerEnabled}
+      restNotifications={data.settings.restNotifications}
     />
   );
 }

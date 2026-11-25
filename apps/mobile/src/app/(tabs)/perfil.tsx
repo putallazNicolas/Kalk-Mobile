@@ -1,4 +1,9 @@
-import { DEFAULT_SETTINGS, exportFileName, type WeightUnit } from '@gym/core';
+import {
+  DEFAULT_SETTINGS,
+  exportFileName,
+  type RestNotificationState,
+  type WeightUnit,
+} from '@gym/core';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -7,6 +12,7 @@ import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   AboutKalk,
+  RestNotificationSetting,
   Button,
   ErrorState,
   Icon,
@@ -94,7 +100,11 @@ export default function PerfilScreen() {
     );
   const settings = data ?? DEFAULT_SETTINGS;
 
-  async function update(patch: { unit?: WeightUnit; restTimerEnabled?: boolean }) {
+  async function update(patch: {
+    unit?: WeightUnit;
+    restTimerEnabled?: boolean;
+    restNotifications?: RestNotificationState;
+  }) {
     await attempt(() => repos.settings.update(patch));
     reload();
   }
@@ -210,6 +220,12 @@ export default function PerfilScreen() {
             }}
           />
         </View>
+        <View style={styles.restNotice}>
+          <RestNotificationSetting
+            value={settings.restNotifications}
+            onChange={(v) => void update({ restNotifications: v })}
+          />
+        </View>
 
         <Text variant="label" style={styles.section}>
           TUS DATOS
@@ -309,6 +325,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   switchLabel: { flex: 1 },
+  restNotice: { marginTop: space.sm },
   dataCard: {
     padding: space.lg,
     gap: space.md,
