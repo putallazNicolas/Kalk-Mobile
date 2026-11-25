@@ -12,6 +12,7 @@ import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   AboutKalk,
+  RestNotificationDiagnostics,
   RestNotificationSetting,
   Button,
   ErrorState,
@@ -31,6 +32,7 @@ import { configVersion } from '../../lib/appVersion';
 import { attempt } from '../../lib/errors';
 import { formatDayMonth, formatMonthYear, formatNumber, kgToUnit } from '../../lib/format';
 import { haptics } from '../../lib/haptics';
+import { restNotificationsSupported } from '../../lib/restNotifications';
 import { colors, hit, radii, space, stroke } from '../../theme';
 
 const UNITS: WeightUnit[] = ['kg', 'lb'];
@@ -84,6 +86,8 @@ export default function PerfilScreen() {
   const lastExport = exportedAt ?? stats.data?.lastExport;
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  // Hidden: a long press on the version in "Acerca de Kalk" (always shown while developing).
+  const [diagnostics, setDiagnostics] = useState(__DEV__);
   const version = configVersion();
 
   if (loading && !data)
@@ -223,9 +227,18 @@ export default function PerfilScreen() {
         <View style={styles.restNotice}>
           <RestNotificationSetting
             value={settings.restNotifications}
+            restTimerEnabled={settings.restTimerEnabled}
             onChange={(v) => void update({ restNotifications: v })}
           />
         </View>
+        {diagnostics && restNotificationsSupported ? (
+          <View style={styles.restNotice}>
+            <RestNotificationDiagnostics
+              saved={settings.restNotifications}
+              restTimerEnabled={settings.restTimerEnabled}
+            />
+          </View>
+        ) : null}
 
         <Text variant="label" style={styles.section}>
           TUS DATOS
@@ -265,7 +278,12 @@ export default function PerfilScreen() {
         </View>
 
         <View style={styles.about}>
-          <AboutKalk />
+          <AboutKalk
+            onLongPressVersion={() => {
+              haptics.medium();
+              setDiagnostics((d) => !d);
+            }}
+          />
         </View>
       </ScrollView>
     </ScreenContainer>

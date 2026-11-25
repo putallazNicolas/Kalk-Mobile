@@ -7,6 +7,7 @@ import {
 } from '@gym/core';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import HoyScreen from '../app/(tabs)/index';
@@ -22,10 +23,6 @@ jest.mock(
   'expo-router',
   () => (jest.requireActual('./routerMock') as typeof import('./routerMock')).expoRouterMock,
 );
-jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => ({
-  __esModule: true,
-  default: ({ children }: { children: unknown }) => children,
-}));
 jest.mock('../components/workout/RestTimerBar', () => ({ RestTimerBar: () => null }));
 jest.mock('../lib/useNow', () => ({ useNow: () => Date.now() }));
 
@@ -46,13 +43,15 @@ function fx(): Fx {
 
 function renderWith({ repos }: Fx, ui: ReactElement) {
   return render(
-    <SafeAreaProvider initialMetrics={METRICS}>
-      <DataProvider repositories={repos}>
-        {ui}
-        <ConfirmHost />
-        <UndoToastHost />
-      </DataProvider>
-    </SafeAreaProvider>,
+    <GestureHandlerRootView>
+      <SafeAreaProvider initialMetrics={METRICS}>
+        <DataProvider repositories={repos}>
+          {ui}
+          <ConfirmHost />
+          <UndoToastHost />
+        </DataProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>,
   );
 }
 

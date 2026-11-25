@@ -27,8 +27,12 @@ interface SetRowProps {
   kg: string;
   reps: string;
   repsPlaceholder?: string;
-  /** Increments to shake the reps field (✓ tapped with no reps and no planned number). */
+  /**
+   * Increments to shake a field: reps (✓ with no reps and no planned number) or kg (✓ with no kg
+   * on an exercise that needs a load).
+   */
   shakeSignal?: number;
+  shakeField?: 'kg' | 'reps';
   completed: boolean;
   /** Marks the row as the one being worked on (also set automatically while an input has focus). */
   focused?: boolean;
@@ -96,6 +100,7 @@ export function SetRow({
   reps,
   repsPlaceholder,
   shakeSignal = 0,
+  shakeField = 'reps',
   completed,
   focused = false,
   pr = false,
@@ -163,7 +168,7 @@ export function SetRow({
 
   const rowAnimated = useAnimatedStyle(() => ({
     backgroundColor: completed
-      ? interpolateColor(flash.value, [0, 1], [colors.successMuted, colors.successPressed])
+      ? interpolateColor(flash.value, [0, 1], [colors.successRow, colors.successRowPressed])
       : isFocus
         ? colors.surfaceRaised
         : colors.surface,
@@ -224,31 +229,33 @@ export function SetRow({
           </Text>
         ) : null}
       </View>
-      <TextInput
-        ref={kgInputRef}
-        style={[
-          ...inputBase,
-          !completed && (kgFocus ? styles.inputActive : styles.inputPending),
-          kgFocus && styles.inputFocused,
-        ]}
-        value={kg}
-        onChangeText={onChangeKg}
-        keyboardType="decimal-pad"
-        placeholder="0"
-        placeholderTextColor={colors.textDisabled}
-        selectionColor={colors.accent}
-        selectTextOnFocus
-        accessibilityLabel={`Kg, serie ${index}`}
-        returnKeyType="next"
-        submitBehavior="submit"
-        onSubmitEditing={onSubmitKg}
-        onFocus={() => setKgFocus(true)}
-        onBlur={() => {
-          setKgFocus(false);
-          onBlurKg?.();
-        }}
-      />
-      <Animated.View style={shakeAnimated}>
+      <Animated.View style={shakeField === 'kg' ? shakeAnimated : undefined}>
+        <TextInput
+          ref={kgInputRef}
+          style={[
+            ...inputBase,
+            !completed && (kgFocus ? styles.inputActive : styles.inputPending),
+            kgFocus && styles.inputFocused,
+          ]}
+          value={kg}
+          onChangeText={onChangeKg}
+          keyboardType="decimal-pad"
+          placeholder="0"
+          placeholderTextColor={colors.textDisabled}
+          selectionColor={colors.accent}
+          selectTextOnFocus
+          accessibilityLabel={`Kg, serie ${index}`}
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={onSubmitKg}
+          onFocus={() => setKgFocus(true)}
+          onBlur={() => {
+            setKgFocus(false);
+            onBlurKg?.();
+          }}
+        />
+      </Animated.View>
+      <Animated.View style={shakeField === 'reps' ? shakeAnimated : undefined}>
         <TextInput
           ref={repsInputRef}
           style={[

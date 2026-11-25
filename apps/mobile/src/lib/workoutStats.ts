@@ -1,4 +1,12 @@
-import { epley, type WorkoutDetail, type WorkoutExerciseDetail, type WorkoutSet } from '@gym/core';
+import {
+  epley,
+  type WeightUnit,
+  type WorkoutDetail,
+  type WorkoutExerciseDetail,
+  type WorkoutSet,
+} from '@gym/core';
+
+import { formatNumber, kgToUnit } from './format';
 
 /** Minimum e1RM improvement (kg) to count as a record; absorbs float noise. */
 const PR_EPSILON = 0.05;
@@ -65,6 +73,24 @@ export function workoutTotals(workout: WorkoutDetail): WorkoutTotals {
     }
   }
   return { doneSets, totalSets, volumeKg };
+}
+
+/**
+ * Title of the "Sesión completa" card: "3 ejercicios · 14 series · 4.720 kg", from the completed
+ * sets, in the person's unit. No volume when it is 0 (bodyweight only). Facts, no praise.
+ */
+export function sessionSummary(workout: WorkoutDetail, unit: WeightUnit): string {
+  const { doneSets, volumeKg } = workoutTotals(workout);
+  const exercises = workout.exercises.filter(
+    (e) => !e.skipped && e.sets.some((s) => s.completed),
+  ).length;
+  const parts = [
+    `${exercises} ${exercises === 1 ? 'ejercicio' : 'ejercicios'}`,
+    `${doneSets} ${doneSets === 1 ? 'serie' : 'series'}`,
+  ];
+  const volume = Math.round(kgToUnit(volumeKg, unit));
+  if (volume > 0) parts.push(`${formatNumber(volume, 0)} ${unit}`);
+  return parts.join(' · ');
 }
 
 /** First not-skipped exercise with a pending set after `afterIndex`, wrapping around. */

@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { appVersionLabel } from '../../lib/appVersion';
 import { colors, radii, space, stroke } from '../../theme';
@@ -13,7 +13,15 @@ const ICON_SIZE = 80;
  * the name as text next to the version. The only place inside the app with the icon in color.
  * No wordmark here: the drawn name lives on the foot of Hoy.
  */
-export function AboutKalk() {
+/** Hold on the version this long to show the diagnostics (nobody does it by accident). */
+const DIAGNOSTICS_HOLD_MS = 1500;
+
+interface AboutKalkProps {
+  /** A long press on the version: shows or hides the end-of-rest notification diagnostics. */
+  onLongPressVersion?: () => void;
+}
+
+export function AboutKalk({ onLongPressVersion }: AboutKalkProps = {}) {
   return (
     <View style={styles.card}>
       <Text variant="label" accessibilityRole="header">
@@ -24,10 +32,12 @@ export function AboutKalk() {
         {'Tu planilla de fuerza, sin papel.\nTus datos quedan en este teléfono.'}
       </Text>
       {/* Two Texts in a row: never nest the 15 pt version inside the 14 pt name. */}
-      <View
+      <Pressable
         style={styles.nameRow}
         accessible
         accessibilityLabel={`Kalk, versión ${appVersionLabel()}`}
+        onLongPress={onLongPressVersion}
+        delayLongPress={DIAGNOSTICS_HOLD_MS}
       >
         <Text variant="aboutName" color="textPrimary">
           Kalk
@@ -35,7 +45,7 @@ export function AboutKalk() {
         <Text variant="aboutVersion" color="textTertiary">
           {appVersionLabel()}
         </Text>
-      </View>
+      </Pressable>
     </View>
   );
 }

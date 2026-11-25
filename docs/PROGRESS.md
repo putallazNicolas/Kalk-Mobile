@@ -1,5 +1,41 @@
 # Progreso
 
+## Arreglos: ✓ que borraba una serie, kg vacíos, aviso de descanso y card final (2026-11-25)
+
+Rama `fix/set-swipe`. Qué pasaba y qué cambió está en `docs/DECISIONS.md` (las líneas del 2026-11-25 que
+empiezan con "Bug", "Kg vacíos", "Aviso de descanso" y "Card final").
+
+**Para probar en el iPhone:**
+
+1. **✓ varias veces seguidas:** entreno libre → Aperturas con mancuernas (3 series). Tocá ✓ sin poner kg:
+   la serie no se completa, el campo de kg tiembla y queda listo para escribir. Escribí los kg y tocá ✓ en
+   las tres, rápido. Tienen que quedar las 3, en verde (no rosa ni rojo) y sin ningún "Quitar" asomando.
+2. **Scrollear no borra:** con un ejercicio abierto, scrolleá la lista en diagonal, a propósito. Ninguna
+   fila se tiene que correr.
+3. **Quitar con "Deshacer":** deslizá una serie a la izquierda. Un poco: aparece "Quitar" en rojo (tocar la
+   fila la cierra). Hasta más de la mitad de la pantalla: se quita y abajo aparece "Serie quitada ·
+   Deshacer". Tocá "Deshacer" y vuelve.
+4. **Card nueva:** al completar todo aparece "SESIÓN COMPLETA" con "1 ejercicio · 3 series · 360 kg" (o lo
+   que hayas hecho), sin "Buen laburo".
+5. **Vibración al terminar el descanso:** con la app abierta, esperá a que el temporizador llegue a cero: el
+   teléfono vibra y la barra dice "A LA BARRA". Con la app abierta no aparece banner (así está diseñado).
+
+**Si el aviso de descanso no llega: el diagnóstico.** En Perfil, abajo de todo, mantené apretada la versión
+de "Acerca de Kalk" durante 1,5 s. Debajo del switch "Aviso de fin de descanso" aparece "Diagnóstico del
+aviso". Tocá "Probar aviso en 5 s" y **bloqueá el teléfono enseguida**. Según lo que veas:
+
+| Lo que muestra                                                                               | Qué significa                                              | Qué hacer                                                                                                       |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| "Permiso: denied" o "iOS status: 1 (negado)"                                                 | iOS no deja notificar a Expo Go                            | Ajustes de iOS → Expo Go → Notificaciones → permitir                                                            |
+| "iOS allowsAlert: false" o "iOS pantalla bloqueada: false"                                   | Hay permiso pero sin banners o sin pantalla bloqueada      | Ajustes de iOS → Expo Go → Notificaciones → prender "Pantalla bloqueada" y "Banners"                            |
+| "Guardado en la app: off" o "unasked"                                                        | La app no programa nada                                    | Prendé el switch "Aviso de fin de descanso"                                                                     |
+| "Temporizador de descanso: apagado"                                                          | Sin temporizador no hay descanso que avisar                | Prendé "Temporizador de descanso"                                                                               |
+| "Programado…" y la prueba **llega** con el teléfono bloqueado, pero el aviso del descanso no | Falla la programación del descanso                         | Durante un descanso abrí el diagnóstico: "Programadas ahora" tendría que ser 1; si es 0, mandame "Último error" |
+| "Programado…" pero la prueba **no llega** con todo permitido                                 | iOS no la entrega (Modo Concentración, Resumen programado) | Revisá Concentración / No molestar y el Resumen programado de iOS                                               |
+| "Último error: …"                                                                            | Algo falló al leer, programar o cancelar                   | Mandame ese texto                                                                                               |
+
+En Expo Go el aviso dice "Expo Go", no Kalk.
+
 ## Flexibilidad en el entrenamiento y aviso de descanso (2026-11-25)
 
 Decisiones aprobadas: 1b · 2b · 3B · 4 después del actual · 5 primer descanso (`design/S6`, `F1`, `F1b`). PRs

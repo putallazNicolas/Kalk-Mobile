@@ -7,22 +7,22 @@ import {
   type WorkoutDetail,
 } from '@gym/core';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { AppState } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ConfirmHost } from '../components/ConfirmDialog';
+import { RestNotificationDiagnostics } from '../components/RestNotificationDiagnostics';
 import { ActiveWorkout } from '../components/workout/ActiveWorkout';
 import { nextUpAfter } from '../components/workout/useRestNotification';
 import { DataProvider } from '../data/DataProvider';
+import { lastNotificationError } from '../lib/restNotifications';
 import { restNotificationText } from '../lib/restNotificationText';
 
 jest.mock(
   'expo-router',
   () => (jest.requireActual('./routerMock') as typeof import('./routerMock')).expoRouterMock,
 );
-jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => ({
-  __esModule: true,
-  default: ({ children }: { children: unknown }) => children,
-}));
 jest.mock('../lib/useNow', () => ({ useNow: () => Date.now() }));
 // The real bar animates an SVG ring; here it only exposes its two actions.
 jest.mock('../components/workout/RestTimerBar', () => {
@@ -50,6 +50,7 @@ jest.mock('expo-notifications', () => ({
   requestPermissionsAsync: jest.fn(async () => ({ status: mockPermission })),
   scheduleNotificationAsync: jest.fn(async (_req: unknown) => `n${++mockNextId}`),
   cancelScheduledNotificationAsync: jest.fn(async (_id: string) => undefined),
+  getAllScheduledNotificationsAsync: jest.fn(async () => [{}, {}]),
   SchedulableTriggerInputTypes: { TIME_INTERVAL: 'timeInterval' },
 }));
 type Fn = jest.Mock<(...args: unknown[]) => unknown>;
@@ -82,20 +83,22 @@ async function open(mode: RestNotificationState, restSeconds = 90) {
   const initial = (await repos.workouts.getById(started.id))!;
   const names = Object.fromEntries(catalog.map((e) => [e.id, e.name]));
   const view = await render(
-    <SafeAreaProvider initialMetrics={METRICS}>
-      <DataProvider repositories={repos}>
-        <ActiveWorkout
-          initial={initial}
-          names={names}
-          previous={{}}
-          bests={{}}
-          unit="kg"
-          restTimerEnabled
-          restNotifications={mode}
-        />
-        <ConfirmHost />
-      </DataProvider>
-    </SafeAreaProvider>,
+    <GestureHandlerRootView>
+      <SafeAreaProvider initialMetrics={METRICS}>
+        <DataProvider repositories={repos}>
+          <ActiveWorkout
+            initial={initial}
+            names={names}
+            previous={{}}
+            bests={{}}
+            unit="kg"
+            restTimerEnabled
+            restNotifications={mode}
+          />
+          <ConfirmHost />
+        </DataProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>,
   );
   return {
     repos,
@@ -234,6 +237,86 @@ describe('first-rest prompt', () => {
     await open('unasked', 0);
     await complete(1);
     expect(screen.queryByText('¿Te avisamos al terminar?')).toBeNull();
+  });
+});
+
+describe('what must not lose the notification', () => {
+  it('a schedule that answers after the rest was closed is cancelled, never left behind', async () => {
+    let resolve: (id: string) => void = () => undefined;
+    mockNotifications.scheduleNotificationAsync.mockImplementationOnce(
+      () => new Promise<string>((r) => (resolve = r)),
+    );
+    await open('on');
+    await complete(1);
+    await fireEvent.press(screen.getByLabelText('Cerrar descanso'));
+    await settle();
+    expect(mockNotifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
+
+    await act(async () => resolve('late'));
+    await settle();
+    expect(mockNotifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith('late');
+  });
+
+  it('going to the background or locking the phone keeps it scheduled', async () => {
+    const listeners: ((state: string) => void)[] = [];
+    // jest-expo's AppState is itself a mock: wrap it and put it back, not spyOn + mockRestore.
+    const original = AppState.addEventListener;
+    AppState.addEventListener = ((type, fn) => {
+      listeners.push(fn as (state: string) => void);
+      return original(type, fn);
+    }) as typeof AppState.addEventListener;
+    try {
+      await open('on');
+      await complete(1);
+      expect(mockNotifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        for (const fn of listeners) fn('inactive');
+        for (const fn of listeners) fn('background');
+      });
+      await settle();
+      expect(listeners.length).toBeGreaterThan(0);
+      expect(mockNotifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
+    } finally {
+      AppState.addEventListener = original;
+    }
+  });
+
+  it('a failure is reported (console.warn while developing), not swallowed', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockNotifications.scheduleNotificationAsync.mockImplementationOnce(async () => {
+      throw new Error('boom');
+    });
+    await open('on');
+    await complete(1);
+    expect(warn).toHaveBeenCalledWith('[rest notification] scheduling: boom');
+    expect(lastNotificationError()).toBe('scheduling: boom');
+    warn.mockRestore();
+  });
+});
+
+describe('Perfil diagnostics', () => {
+  it('shows the permission, the saved value and the scheduled count; tries a 5 s notice', async () => {
+    mockNotifications.getPermissionsAsync.mockImplementation(async () => ({
+      status: 'granted',
+      granted: true,
+      canAskAgain: true,
+      ios: { status: 2, allowsAlert: true, allowsSound: true },
+    }));
+    await render(<RestNotificationDiagnostics saved="on" restTimerEnabled />);
+    await settle();
+    expect(screen.getByText(/Guardado en la app: on/)).toBeTruthy();
+    expect(screen.getByText(/iOS status: 2 \(autorizado\)/)).toBeTruthy();
+    expect(screen.getByText(/iOS allowsAlert: true/)).toBeTruthy();
+    expect(screen.getByText(/Programadas ahora: 2/)).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Probar aviso en 5 s'));
+    await settle();
+    expect(lastScheduled()!.trigger.seconds).toBe(5);
+    expect(screen.getByText('Programado. Bloqueá el teléfono ya: llega en 5 s.')).toBeTruthy();
+    mockNotifications.getPermissionsAsync.mockImplementation(async () => ({
+      status: mockPermission,
+    }));
   });
 });
 

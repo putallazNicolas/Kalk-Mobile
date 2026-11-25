@@ -11,9 +11,9 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@types/sql.js": "^1.4.11",
+    "@types/sql.js": "^1.16.1",
     "jest": "^30.5.2",
-    "sql.js": "^1.16.0",
+    "sql.js": "^1.17.0",
     "ts-jest": "^29.4.15"
   }
 }

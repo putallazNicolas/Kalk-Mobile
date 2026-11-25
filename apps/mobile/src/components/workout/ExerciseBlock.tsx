@@ -51,7 +51,7 @@ interface ExerciseBlockProps {
   /** Exercise cues (Exercise.notes), shown in the open card. */
   cues?: string;
   /** Shake request for a set's reps field: `n` increments on every request. */
-  shake: { setId: string; n: number } | null;
+  shake: { setId: string; n: number; field: 'kg' | 'reps' } | null;
   /** The set being worked on (first pending one) when the card is open. */
   focusSetId: string | null;
   onToggleExpand: () => void;
@@ -244,6 +244,7 @@ export function ExerciseBlock({
                 exiting={exit}
               >
                 <SwipeToDelete
+                  testID={`swipe-set-${s.id}`}
                   actionLabel="Quitar"
                   radius={radii.md}
                   onDelete={() => onRemoveSet(s.id)}
@@ -259,6 +260,7 @@ export function ExerciseBlock({
                       exercise.plannedReps
                     }
                     shakeSignal={shake?.setId === s.id ? shake.n : 0}
+                    shakeField={shake?.setId === s.id ? shake.field : undefined}
                     completed={s.completed}
                     focused={s.id === focusSetId}
                     pr={prSets.has(s.id)}

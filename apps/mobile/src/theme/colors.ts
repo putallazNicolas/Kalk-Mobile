@@ -27,6 +27,12 @@ export const colors = {
   successMuted: 'rgba(61,220,132,0.12)',
   successPressed: 'rgba(61,220,132,0.42)',
   successFaint: 'rgba(61,220,132,0.10)',
+  /**
+   * successMuted and successPressed composited over surface: opaque, for rows that can be swiped
+   * (SwipeToDelete draws its red action behind them, and nothing may show through).
+   */
+  successRow: '#192C23',
+  successRowPressed: '#256844',
   successBorder: 'rgba(61,220,132,0.30)',
   successBorderStrong: 'rgba(61,220,132,0.45)',
   record: '#FFC83D',
